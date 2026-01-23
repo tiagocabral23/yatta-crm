@@ -1,5 +1,5 @@
 /**
- * YATTA CRM - v3.9.15 (CLOUD)
+ * YATTA CRM - v3.9.15 (CLOUD - CORRIGIDO)
  * Conectado ao Supabase (PostgreSQL)
  */
 
@@ -8,12 +8,17 @@ const SUPABASE_URL = 'https://igvdhpzzjamoyetxickb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mXmrR5peC1mICxxMxjDKrg_2NJUZG0Q'; // Chave fornecida
 
 // Inicializa o cliente Supabase
-// (Certifique-se de ter adicionado o script do supabase-js no HTML)
 let supabase;
-if (typeof createClient !== 'undefined') {
+
+// Correção: Verifica se a biblioteca foi carregada no objeto global 'window.supabase'
+if (window.supabase && window.supabase.createClient) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+} else if (typeof createClient !== 'undefined') {
+    // Fallback para versões antigas
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 } else {
-    console.error("ERRO CRÍTICO: Biblioteca Supabase não encontrada. Adicione <script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script> no seu HTML.");
+    console.error("ERRO CRÍTICO: Biblioteca Supabase não encontrada.");
+    alert("ERRO: Não foi possível conectar ao banco de dados. Verifique se o arquivo index.html tem a linha do script do Supabase.");
 }
 
 const APP = {
@@ -26,7 +31,7 @@ const APP = {
      * INICIALIZAÇÃO (Carrega dados da Nuvem)
      */
     init: async () => {
-        if (!supabase) return alert("Erro: Biblioteca Supabase não carregada.");
+        if (!supabase) return;
 
         // Carrega dados em paralelo para ser mais rápido
         const [usersReq, clientsReq, stockReq, dealsReq] = await Promise.all([
@@ -46,9 +51,8 @@ const APP = {
 
         // Se não houver usuários (primeiro uso), cria o padrão na memória para login
         if (APP.data.users.length === 0) {
-            // Opcional: Criar usuário padrão no banco se estiver vazio
-            // await APP.saveUserDirect({name: 'Gestor Inicial', role: 'gestor'});
-            APP.data.users.push({name: 'Gestor Inicial', role: 'gestor'}); 
+            // Cria usuário padrão no banco se estiver vazio para evitar bloqueio
+            await APP.ensureDefaultUser();
         }
 
         // Configura datas dos filtros
@@ -62,6 +66,18 @@ const APP = {
 
         APP.renderUserSelect();
         APP.renderAll(); // Renderiza com os dados carregados
+    },
+
+    // Garante que existe pelo menos um gestor
+    ensureDefaultUser: async () => {
+        const defaultUser = {name: 'Gestor Inicial', role: 'gestor'};
+        const { data, error } = await supabase.from('users').insert(defaultUser).select();
+        if (!error && data) {
+            APP.data.users.push(data[0]);
+        } else {
+            // Fallback local caso falhe a gravação (ex: erro de permissão)
+            APP.data.users.push(defaultUser);
+        }
     },
 
     /**
