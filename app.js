@@ -1,5 +1,5 @@
 /**
- * YATTA CRM - v3.9.15 (CLOUD - CORRIGIDO)
+ * YATTA CRM - v3.9.15 (CLOUD - CORRIGIDO V2)
  * Conectado ao Supabase (PostgreSQL)
  */
 
@@ -8,17 +8,21 @@ const SUPABASE_URL = 'https://igvdhpzzjamoyetxickb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mXmrR5peC1mICxxMxjDKrg_2NJUZG0Q'; // Chave fornecida
 
 // Inicializa o cliente Supabase
-let supabase;
+// Mudamos o nome da variável para 'supabaseClient' para não conflitar com a biblioteca global
+let supabaseClient;
 
-// Correção: Verifica se a biblioteca foi carregada no objeto global 'window.supabase'
 if (window.supabase && window.supabase.createClient) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 } else if (typeof createClient !== 'undefined') {
-    // Fallback para versões antigas
-    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 } else {
     console.error("ERRO CRÍTICO: Biblioteca Supabase não encontrada.");
-    alert("ERRO: Não foi possível conectar ao banco de dados. Verifique se o arquivo index.html tem a linha do script do Supabase.");
+    // Fallback: Tenta acessar via objeto global direto se disponível
+    if (window.supabase) {
+        try {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(e) { console.error(e); }
+    }
 }
 
 const APP = {
@@ -31,14 +35,17 @@ const APP = {
      * INICIALIZAÇÃO (Carrega dados da Nuvem)
      */
     init: async () => {
-        if (!supabase) return;
+        if (!supabaseClient) {
+            alert("ERRO: Não foi possível conectar ao banco de dados. Verifique o console (F12) para detalhes.");
+            return;
+        }
 
         // Carrega dados em paralelo para ser mais rápido
         const [usersReq, clientsReq, stockReq, dealsReq] = await Promise.all([
-            supabase.from('users').select('*'),
-            supabase.from('clients').select('*'),
-            supabase.from('stock').select('*'),
-            supabase.from('deals').select('*')
+            supabaseClient.from('users').select('*'),
+            supabaseClient.from('clients').select('*'),
+            supabaseClient.from('stock').select('*'),
+            supabaseClient.from('deals').select('*')
         ]);
 
         if (usersReq.error) console.error("Erro Users:", usersReq.error);
@@ -51,7 +58,6 @@ const APP = {
 
         // Se não houver usuários (primeiro uso), cria o padrão na memória para login
         if (APP.data.users.length === 0) {
-            // Cria usuário padrão no banco se estiver vazio para evitar bloqueio
             await APP.ensureDefaultUser();
         }
 
@@ -71,11 +77,10 @@ const APP = {
     // Garante que existe pelo menos um gestor
     ensureDefaultUser: async () => {
         const defaultUser = {name: 'Gestor Inicial', role: 'gestor'};
-        const { data, error } = await supabase.from('users').insert(defaultUser).select();
+        const { data, error } = await supabaseClient.from('users').insert(defaultUser).select();
         if (!error && data) {
             APP.data.users.push(data[0]);
         } else {
-            // Fallback local caso falhe a gravação (ex: erro de permissão)
             APP.data.users.push(defaultUser);
         }
     },
@@ -123,14 +128,14 @@ const APP = {
         if(!item) return;
         const newHistory = APP.addLog(item, action, detail);
         // Atualiza apenas o campo history no banco
-        await supabase.from('stock').update({ history: newHistory }).eq('id', stockId);
+        await supabaseClient.from('stock').update({ history: newHistory }).eq('id', stockId);
     },
 
     addDealHistory: async (dealId, action, detail) => {
         const item = APP.data.deals.find(d => d.id === dealId);
         if(!item) return;
         const newHistory = APP.addLog(item, action, detail);
-        await supabase.from('deals').update({ history: newHistory }).eq('id', dealId);
+        await supabaseClient.from('deals').update({ history: newHistory }).eq('id', dealId);
     },
 
     /**
@@ -219,7 +224,7 @@ const APP = {
             role: document.getElementById('usr-role').value 
         };
         
-        const { data, error } = await supabase.from('users').insert(userData).select();
+        const { data, error } = await supabaseClient.from('users').insert(userData).select();
         
         if(error) return alert("Erro ao salvar usuário: " + error.message);
         
@@ -270,7 +275,7 @@ const APP = {
 
     deleteUser: async (id) => {
         if(confirm('Excluir usuário?')) {
-            const { error } = await supabase.from('users').delete().eq('id', id);
+            const { error } = await supabaseClient.from('users').delete().eq('id', id);
             if(error) return alert("Erro: " + error.message);
             // Atualiza local
             APP.data.users = APP.data.users.filter(u => u.id !== id);
@@ -295,7 +300,7 @@ const APP = {
 
         if (id) cliData.id = id; // Update
 
-        const { data, error } = await supabase.from('clients').upsert(cliData).select();
+        const { data, error } = await supabaseClient.from('clients').upsert(cliData).select();
         
         if(error) return alert("Erro ao salvar cliente: " + error.message);
 
@@ -305,7 +310,7 @@ const APP = {
     
     deleteClient: async (id) => {
         if(confirm('Excluir cliente?')) { 
-            const { error } = await supabase.from('clients').delete().eq('id', id);
+            const { error } = await supabaseClient.from('clients').delete().eq('id', id);
             if(error) return alert("Erro: " + error.message);
             APP.refreshLocal('clients', {id}, true);
         }
@@ -393,7 +398,7 @@ const APP = {
             }
 
             if(newItems.length > 0) {
-                const { data, error } = await supabase.from('stock').insert(newItems).select();
+                const { data, error } = await supabaseClient.from('stock').insert(newItems).select();
                 if(error) alert("Erro na importação: " + error.message);
                 else {
                     APP.data.stock.push(...data);
@@ -423,7 +428,7 @@ const APP = {
             // Edição: Mantém histórico e status
             APP.addHistory(id, 'Edição', 'Dados atualizados'); // Atualiza histórico via função separada
             // Salva dados básicos
-            const { data, error } = await supabase.from('stock').update(itemData).eq('id', id).select();
+            const { data, error } = await supabaseClient.from('stock').update(itemData).eq('id', id).select();
             if(!error) APP.refreshLocal('stock', data[0]);
         } else {
             // Novo
@@ -431,7 +436,7 @@ const APP = {
             itemData.date_entry = new Date().toISOString();
             itemData.history = [{date: Date.now(), user: APP.user.name, action: 'Criação', detail: 'Manual'}];
             
-            const { data, error } = await supabase.from('stock').insert(itemData).select();
+            const { data, error } = await supabaseClient.from('stock').insert(itemData).select();
             if(error) return alert("Erro: " + error.message);
             APP.refreshLocal('stock', data[0]);
         }
@@ -457,7 +462,7 @@ const APP = {
                 // Remove vínculo da venda
                 const deal = APP.data.deals.find(d => d.stock_id === id && d.stage === 'ganho');
                 if(deal) {
-                    await supabase.from('deals').update({stock_id: null}).eq('id', deal.id);
+                    await supabaseClient.from('deals').update({stock_id: null}).eq('id', deal.id);
                     APP.addDealHistory(deal.id, 'Desvinculo', 'Item restaurado ao estoque.');
                     deal.stock_id = null; // Update local deal
                 }
@@ -466,7 +471,7 @@ const APP = {
                 item.status = 'Disponível';
                 APP.addLog(item, 'Restauração', 'Manual'); // Update local history array
                 
-                const { error } = await supabase.from('stock').update({
+                const { error } = await supabaseClient.from('stock').update({
                     status: 'Disponível', 
                     history: item.history
                 }).eq('id', id);
@@ -482,7 +487,7 @@ const APP = {
     deleteStock: async (id) => { 
         if(APP.user.role !== 'gestor') return alert('Acesso negado');
         if(confirm('Excluir permanentemente?')) { 
-            const { error } = await supabase.from('stock').delete().eq('id', id);
+            const { error } = await supabaseClient.from('stock').delete().eq('id', id);
             if(error) return alert("Erro: " + error.message);
             APP.refreshLocal('stock', {id}, true);
         } 
@@ -634,7 +639,7 @@ const APP = {
             }
             dealData.history = newHist;
 
-            const { data, error } = await supabase.from('deals').update(dealData).eq('id', id).select();
+            const { data, error } = await supabaseClient.from('deals').update(dealData).eq('id', id).select();
             if(error) return alert("Erro: " + error.message);
             APP.refreshLocal('deals', data[0]);
 
@@ -648,7 +653,7 @@ const APP = {
                 dealData.history.push({date: Date.now(), user: APP.user.name, action: 'Agenda', detail: `Inicial: ${dateBr} - ${dealData.next_desc}`});
             }
 
-            const { data, error } = await supabase.from('deals').insert(dealData).select();
+            const { data, error } = await supabaseClient.from('deals').insert(dealData).select();
             if(error) return alert("Erro: " + error.message);
             APP.refreshLocal('deals', data[0]);
         }
@@ -658,7 +663,7 @@ const APP = {
             const s = APP.data.stock.find(x => x.id === stockId);
             if(s && s.status !== 'Reservado' && s.status !== 'Vendido') {
                 const newHist = APP.addLog(s, 'Reservado', `Vinculado ao cliente ${dealData.client}`);
-                await supabase.from('stock').update({status: 'Reservado', history: newHist}).eq('id', stockId);
+                await supabaseClient.from('stock').update({status: 'Reservado', history: newHist}).eq('id', stockId);
                 s.status = 'Reservado'; // Local update
             }
         }
@@ -685,14 +690,14 @@ const APP = {
         if(confirm('Excluir oportunidade?')) {
             const deal = APP.data.deals.find(d => d.id === id);
             
-            const { error } = await supabase.from('deals').delete().eq('id', id);
+            const { error } = await supabaseClient.from('deals').delete().eq('id', id);
             if(error) return alert("Erro: " + error.message);
 
             if(deal && deal.stock_id) {
                 const s = APP.data.stock.find(x => x.id === deal.stock_id);
                 if(s && s.status === 'Reservado') {
                     const newHist = APP.addLog(s, 'Liberação', 'Oportunidade excluída');
-                    await supabase.from('stock').update({status: 'Disponível', history: newHist}).eq('id', s.id);
+                    await supabaseClient.from('stock').update({status: 'Disponível', history: newHist}).eq('id', s.id);
                     s.status = 'Disponível';
                 }
             }
@@ -733,7 +738,7 @@ const APP = {
         updates.history = newHistory;
 
         // DB Update
-        const { error } = await supabase.from('deals').update(updates).eq('id', id);
+        const { error } = await supabaseClient.from('deals').update(updates).eq('id', id);
         if(error) return alert("Erro: " + error.message);
 
         // Update Local
@@ -761,7 +766,7 @@ const APP = {
                 if(sAction) {
                     s.status = sUpdates.status;
                     sUpdates.history = APP.addLog(s, sAction, `Negócio: ${deal.client}`);
-                    await supabase.from('stock').update(sUpdates).eq('id', s.id);
+                    await supabaseClient.from('stock').update(sUpdates).eq('id', s.id);
                 }
             }
         }
@@ -1073,4 +1078,4 @@ const APP = {
 };
 
 // INICIA O APP
-document.addEventListener('DOMContentLoaded', APP.init);
+document.addEventListener('DOMContentLoaded', APP.init);	
