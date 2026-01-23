@@ -1,53 +1,57 @@
 /**
- * YATTA CRM - v3.9.15
- * Refatorado para Modularização e futura integração com Supabase.
+ * YATTA CRM - v3.9.15 (CLOUD)
+ * Conectado ao Supabase (PostgreSQL)
  */
 
-const STORAGE_KEY = "YATTA_CRM_V3_9_15_FINAL";
+// CREDENCIAIS DO SUPABASE
+const SUPABASE_URL = 'https://igvdhpzzjamoyetxickb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mXmrR5peC1mICxxMxjDKrg_2NJUZG0Q'; // Chave fornecida
 
-// Configuração do Ambiente (Futuramente, trocaremos para 'supabase')
-const CONFIG = {
-    mode: 'local', // 'local' ou 'supabase'
-    version: '3.9.15'
-};
+// Inicializa o cliente Supabase
+// (Certifique-se de ter adicionado o script do supabase-js no HTML)
+let supabase;
+if (typeof createClient !== 'undefined') {
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+} else {
+    console.error("ERRO CRÍTICO: Biblioteca Supabase não encontrada. Adicione <script src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'></script> no seu HTML.");
+}
 
 const APP = {
-    // Estado da Aplicação
+    // Estado Local (Cache para renderização rápida)
     data: { stock: [], users: [], deals: [], clients: [] },
     user: null,
     dragId: null,
 
     /**
-     * INICIALIZAÇÃO
+     * INICIALIZAÇÃO (Carrega dados da Nuvem)
      */
-    init: () => {
-        // [TODO: SUPABASE] No futuro, substituir por await supabase.from(...).select()
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) APP.data = JSON.parse(raw);
+    init: async () => {
+        if (!supabase) return alert("Erro: Biblioteca Supabase não carregada.");
+
+        // Carrega dados em paralelo para ser mais rápido
+        const [usersReq, clientsReq, stockReq, dealsReq] = await Promise.all([
+            supabase.from('users').select('*'),
+            supabase.from('clients').select('*'),
+            supabase.from('stock').select('*'),
+            supabase.from('deals').select('*')
+        ]);
+
+        if (usersReq.error) console.error("Erro Users:", usersReq.error);
+        if (clientsReq.error) console.error("Erro Clients:", clientsReq.error);
         
-        // Dados Padrão (Seed)
-        if (APP.data.users.length === 0) APP.data.users.push({name: 'Gestor Inicial', role: 'gestor'});
-        if (!Array.isArray(APP.data.stock)) APP.data.stock = [];
-        if (!Array.isArray(APP.data.clients)) APP.data.clients = [];
+        APP.data.users = usersReq.data || [];
+        APP.data.clients = clientsReq.data || [];
+        APP.data.stock = stockReq.data || [];
+        APP.data.deals = dealsReq.data || [];
 
-        // BACKFILL: Correções de dados antigos
-        APP.data.deals.forEach(d => {
-            if(d.stage === 'ganho') {
-                if (d.stockId) {
-                    const s = APP.data.stock.find(x => x.id === d.stockId);
-                    if(s) {
-                        if(s.status !== 'Vendido') s.status = 'Vendido';
-                        if(d.originalCost === undefined || (d.originalCost === 0 && s.cost > 0)) {
-                            d.originalCost = s.cost;
-                        }
-                    }
-                } else {
-                    if(d.originalCost === undefined) d.originalCost = 0;
-                }
-            }
-        });
+        // Se não houver usuários (primeiro uso), cria o padrão na memória para login
+        if (APP.data.users.length === 0) {
+            // Opcional: Criar usuário padrão no banco se estiver vazio
+            // await APP.saveUserDirect({name: 'Gestor Inicial', role: 'gestor'});
+            APP.data.users.push({name: 'Gestor Inicial', role: 'gestor'}); 
+        }
 
-        // Configuração de datas padrão para relatórios
+        // Configura datas dos filtros
         const now = new Date();
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
         const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -57,14 +61,29 @@ const APP = {
         if(endInput) endInput.value = lastDay.toISOString().split('T')[0];
 
         APP.renderUserSelect();
+        APP.renderAll(); // Renderiza com os dados carregados
     },
 
     /**
-     * PERSISTÊNCIA DE DADOS
+     * UTILITÁRIOS
      */
-    save: () => {
-        // [TODO: SUPABASE] Substituir por chamadas de API (upsert/insert)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(APP.data));
+    // Gera UUID compatível com o banco (v4)
+    uuid: () => {
+        return crypto.randomUUID(); 
+    },
+
+    // Função auxiliar para atualizar o estado local e re-renderizar
+    refreshLocal: (table, item, isDelete = false) => {
+        if (isDelete) {
+            APP.data[table] = APP.data[table].filter(i => i.id !== item.id);
+        } else {
+            const idx = APP.data[table].findIndex(i => i.id === item.id);
+            if (idx > -1) {
+                APP.data[table][idx] = item; // Atualiza existente
+            } else {
+                APP.data[table].push(item); // Adiciona novo
+            }
+        }
         APP.renderAll();
     },
 
@@ -79,26 +98,30 @@ const APP = {
             action: action,
             detail: detail
         });
+        return obj.history;
     },
 
-    addHistory: (stockId, action, detail) => {
-        if(!stockId) return;
+    // Helpers para salvar histórico no banco
+    addHistory: async (stockId, action, detail) => {
         const item = APP.data.stock.find(s => s.id === stockId);
-        if(item) APP.addLog(item, action, detail);
+        if(!item) return;
+        const newHistory = APP.addLog(item, action, detail);
+        // Atualiza apenas o campo history no banco
+        await supabase.from('stock').update({ history: newHistory }).eq('id', stockId);
     },
 
-    addDealHistory: (dealId, action, detail) => {
-        if(!dealId) return;
-        const d = APP.data.deals.find(x => x.id === dealId);
-        if(d) APP.addLog(d, action, detail);
+    addDealHistory: async (dealId, action, detail) => {
+        const item = APP.data.deals.find(d => d.id === dealId);
+        if(!item) return;
+        const newHistory = APP.addLog(item, action, detail);
+        await supabase.from('deals').update({ history: newHistory }).eq('id', dealId);
     },
 
     /**
      * INTERFACE UI / UX
      */
     toggleMenu: () => {
-        const sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('open');
+        document.getElementById('sidebar').classList.toggle('open');
     },
 
     toast: (msg) => { 
@@ -109,9 +132,7 @@ const APP = {
     },
 
     nav: (tab) => {
-        // Fecha menu no mobile ao clicar
         document.getElementById('sidebar').classList.remove('open');
-        
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
         
@@ -130,22 +151,19 @@ const APP = {
         if(tab === 'agenda') APP.renderAgenda();
     },
 
-    modal: (id) => {
-        const m = document.getElementById(id);
-        if(m) m.classList.add('active');
-    },
-
+    modal: (id) => document.getElementById(id).classList.add('active'),
     closeModals: () => { 
         document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); 
         document.querySelectorAll('form').forEach(f => f.reset()); 
     },
 
     /**
-     * AUTENTICAÇÃO (SIMULADA)
+     * AUTENTICAÇÃO
      */
     login: (name) => {
-        // [TODO: SUPABASE] Substituir por supabase.auth.signIn()
         APP.user = APP.data.users.find(u => u.name === name);
+        if (!APP.user) return alert("Usuário não encontrado.");
+
         document.getElementById('user-overlay').style.display = 'none';
         document.getElementById('user-info').innerText = APP.user.name;
         
@@ -178,10 +196,20 @@ const APP = {
         APP.user = null; 
     },
 
-    saveUser: (e) => {
+    saveUser: async (e) => {
         e.preventDefault();
-        APP.data.users.push({ name: document.getElementById('usr-name').value, role: document.getElementById('usr-role').value });
-        APP.save(); APP.closeModals();
+        const userData = { 
+            name: document.getElementById('usr-name').value, 
+            role: document.getElementById('usr-role').value 
+        };
+        
+        const { data, error } = await supabase.from('users').insert(userData).select();
+        
+        if(error) return alert("Erro ao salvar usuário: " + error.message);
+        
+        APP.refreshLocal('users', data[0]);
+        APP.closeModals();
+        APP.toast('Usuário salvo!');
     },
 
     renderUserSelect: () => { 
@@ -189,8 +217,10 @@ const APP = {
     },
 
     renderUsers: () => {
-        document.querySelector('#table-users tbody').innerHTML = APP.data.users.map(u => `<tr><td>${u.name}</td><td>${u.role}</td><td><button class="btn btn-small btn-danger" onclick="if(confirm('Excluir?')) {APP.data.users = APP.data.users.filter(x=>x.name!=='${u.name}'); APP.save();}">Excluir</button></td></tr>`).join('');
+        // Tabela de usuários
+        document.querySelector('#table-users tbody').innerHTML = APP.data.users.map(u => `<tr><td>${u.name}</td><td>${u.role}</td><td><button class="btn btn-small btn-danger" onclick="APP.deleteUser(${u.id})">Excluir</button></td></tr>`).join('');
         
+        // Performance
         const tbPerf = document.querySelector('#table-performance tbody');
         let ranking = [];
 
@@ -222,40 +252,52 @@ const APP = {
         `).join('');
     },
 
+    deleteUser: async (id) => {
+        if(confirm('Excluir usuário?')) {
+            const { error } = await supabase.from('users').delete().eq('id', id);
+            if(error) return alert("Erro: " + error.message);
+            // Atualiza local
+            APP.data.users = APP.data.users.filter(u => u.id !== id);
+            APP.renderUsers();
+            APP.renderUserSelect();
+        }
+    },
+
     /**
      * MÓDULO: CLIENTES
      */
-    saveClient: (e) => {
+    saveClient: async (e) => {
         e.preventDefault();
         const id = document.getElementById('cli-id').value;
-        const isNew = !id;
+        
         const cliData = {
-            id: id || '_' + Math.random().toString(36).substr(2,9),
             name: document.getElementById('cli-name').value,
             phone: document.getElementById('cli-phone').value,
             email: document.getElementById('cli-email').value,
             obs: document.getElementById('cli-obs').value
         };
 
-        if (!isNew) {
-            const idx = APP.data.clients.findIndex(c => c.id === id);
-            APP.data.clients[idx] = cliData;
-        } else {
-            APP.data.clients.push(cliData);
-        }
-        APP.save(); APP.closeModals(); APP.renderClients();
+        if (id) cliData.id = id; // Update
+
+        const { data, error } = await supabase.from('clients').upsert(cliData).select();
+        
+        if(error) return alert("Erro ao salvar cliente: " + error.message);
+
+        APP.refreshLocal('clients', data[0]);
+        APP.closeModals(); 
     },
     
-    deleteClient: (id) => {
-            if(confirm('Excluir cliente?')) { 
-            APP.data.clients = APP.data.clients.filter(c => c.id !== id); 
-            APP.save(); 
-            APP.renderClients();
-            }
+    deleteClient: async (id) => {
+        if(confirm('Excluir cliente?')) { 
+            const { error } = await supabase.from('clients').delete().eq('id', id);
+            if(error) return alert("Erro: " + error.message);
+            APP.refreshLocal('clients', {id}, true);
+        }
     },
 
     editClient: (id) => {
         const c = APP.data.clients.find(x => x.id === id);
+        if(!c) return;
         document.getElementById('cli-id').value = c.id;
         document.getElementById('cli-name').value = c.name;
         document.getElementById('cli-phone').value = c.phone;
@@ -298,10 +340,12 @@ const APP = {
         
         const reader = new FileReader();
         reader.readAsText(file, 'ISO-8859-1');
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
             const text = evt.target.result;
             const lines = text.split('\n');
             let count = 0;
+            const newItems = [];
+
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
@@ -311,55 +355,72 @@ const APP = {
                     const costStr = cols[3];
                     const dateStr = cols[4];
                     if (model && model !== 'N/A') {
-                        const newId = '_' + Math.random().toString(36).substr(2,9);
-                        const newItem = {
-                            id: newId, type: cols[0], model: model, mono: cols[2],
-                            cost: APP.parseMoney(costStr), date: APP.parseDateBR(dateStr),
-                            status: 'Disponível', history: []
-                        };
-                        APP.data.stock.push(newItem);
-                        APP.addHistory(newId, 'Importação', 'Item importado via CSV');
+                        // Converter data DD/MM/AAAA para YYYY-MM-DD para o Banco
+                        let dbDate = new Date().toISOString(); 
+                        if(dateStr) {
+                            const parts = dateStr.trim().split('/');
+                            if(parts.length === 3) dbDate = new Date(parts[2], parts[1]-1, parts[0]).toISOString();
+                        }
+
+                        newItems.push({
+                            type: cols[0], 
+                            model: model, 
+                            mono: cols[2],
+                            cost: APP.parseMoney(costStr), 
+                            date_entry: dbDate,
+                            status: 'Disponível', 
+                            history: [{date: Date.now(), user: APP.user.name, action: 'Importação', detail: 'Via CSV'}]
+                        });
                         count++;
                     }
                 }
             }
-            APP.save();
-            APP.toast(`${count} itens importados!`);
+
+            if(newItems.length > 0) {
+                const { data, error } = await supabase.from('stock').insert(newItems).select();
+                if(error) alert("Erro na importação: " + error.message);
+                else {
+                    APP.data.stock.push(...data);
+                    APP.toast(`${count} itens importados!`);
+                    APP.renderStock();
+                }
+            }
             e.target.value = '';
         };
     },
 
-    saveStock: (e) => {
+    saveStock: async (e) => {
         e.preventDefault();
         if(APP.user.role !== 'gestor') return alert('Apenas gestores podem editar estoque.');
 
         const id = document.getElementById('stk-item-id-unique').value; 
-        const isNew = !id;
+        
         const itemData = {
-            id: id || '_' + Math.random().toString(36).substr(2,9),
             type: document.getElementById('stk-type').value,
             model: document.getElementById('stk-model').value,
             mono: document.getElementById('stk-mono').value,
-            cost: APP.parseMoney(document.getElementById('stk-cost').value),
-            status: 'Disponível', date: Date.now(), history: []
+            cost: APP.parseMoney(document.getElementById('stk-cost').value)
         };
 
-        if (!isNew) {
-            const idx = APP.data.stock.findIndex(s => s.id === id);
-            if(idx > -1) {
-                const oldItem = APP.data.stock[idx];
-                itemData.status = oldItem.status; 
-                itemData.date = oldItem.date; 
-                itemData.history = oldItem.history;
-                APP.data.stock[idx] = itemData;
-                APP.addHistory(itemData.id, 'Edição', 'Dados do item atualizados');
-            }
+        if (id) {
+            itemData.id = id;
+            // Edição: Mantém histórico e status
+            APP.addHistory(id, 'Edição', 'Dados atualizados'); // Atualiza histórico via função separada
+            // Salva dados básicos
+            const { data, error } = await supabase.from('stock').update(itemData).eq('id', id).select();
+            if(!error) APP.refreshLocal('stock', data[0]);
         } else {
+            // Novo
             itemData.status = 'Disponível';
-            APP.data.stock.push(itemData);
-            APP.addHistory(itemData.id, 'Criação', 'Cadastrado manualmente');
+            itemData.date_entry = new Date().toISOString();
+            itemData.history = [{date: Date.now(), user: APP.user.name, action: 'Criação', detail: 'Manual'}];
+            
+            const { data, error } = await supabase.from('stock').insert(itemData).select();
+            if(error) return alert("Erro: " + error.message);
+            APP.refreshLocal('stock', data[0]);
         }
-        APP.save(); APP.closeModals();
+        
+        APP.closeModals();
     },
 
     prepareStock: () => {
@@ -372,30 +433,53 @@ const APP = {
         APP.modal('modal-item');
     },
 
-    restoreStock: (id) => {
+    restoreStock: async (id) => {
         if(APP.user.role !== 'gestor') return alert('Acesso negado');
-        if(confirm('Tem certeza? O item voltará a ficar DISPONÍVEL no estoque.')) {
+        if(confirm('Restaurar para Disponível?')) {
             const item = APP.data.stock.find(s => s.id === id);
             if(item) {
-                const deal = APP.data.deals.find(d => d.stockId === id && d.stage === 'ganho');
+                // Remove vínculo da venda
+                const deal = APP.data.deals.find(d => d.stock_id === id && d.stage === 'ganho');
                 if(deal) {
-                    deal.stockId = null; 
-                    APP.addDealHistory(deal.id, 'Desvinculo', 'Item restaurado ao estoque, removido desta venda.');
+                    await supabase.from('deals').update({stock_id: null}).eq('id', deal.id);
+                    APP.addDealHistory(deal.id, 'Desvinculo', 'Item restaurado ao estoque.');
+                    deal.stock_id = null; // Update local deal
                 }
+
+                // Atualiza item
                 item.status = 'Disponível';
-                APP.addHistory(item.id, 'Restauração', 'Item retornado de Vendido para Disponível manualmente');
-                APP.save();
-                APP.toast('Item restaurado para o estoque!');
+                APP.addLog(item, 'Restauração', 'Manual'); // Update local history array
+                
+                const { error } = await supabase.from('stock').update({
+                    status: 'Disponível', 
+                    history: item.history
+                }).eq('id', id);
+
+                if(!error) {
+                    APP.toast('Item restaurado!');
+                    APP.renderStock();
+                }
             }
         }
     },
 
-    deleteStock: (id) => { 
+    deleteStock: async (id) => { 
         if(APP.user.role !== 'gestor') return alert('Acesso negado');
-        if(confirm('Excluir?')) { APP.data.stock = APP.data.stock.filter(s => s.id !== id); APP.save(); } 
+        if(confirm('Excluir permanentemente?')) { 
+            const { error } = await supabase.from('stock').delete().eq('id', id);
+            if(error) return alert("Erro: " + error.message);
+            APP.refreshLocal('stock', {id}, true);
+        } 
     },
 
-    editStock: (id) => { const s = APP.data.stock.find(x => x.id === id); document.getElementById('stk-item-id-unique').value = s.id; document.getElementById('stk-model').value = s.model; document.getElementById('stk-cost').value = s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2}); APP.modal('modal-item'); },
+    editStock: (id) => { 
+        const s = APP.data.stock.find(x => x.id === id); 
+        document.getElementById('stk-item-id-unique').value = s.id; 
+        document.getElementById('stk-model').value = s.model; 
+        document.getElementById('stk-mono').value = s.mono; // Fix: was missing
+        document.getElementById('stk-cost').value = s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2}); 
+        APP.modal('modal-item'); 
+    },
     
     toggleStock: () => document.getElementById('div-stock-select').style.display = document.getElementById('deal-type').value === 'consorcio' ? 'none' : 'block',
 
@@ -409,9 +493,12 @@ const APP = {
         const isGestor = APP.user.role === 'gestor';
 
         APP.data.stock.forEach(s => {
-            if (s.model.toLowerCase().includes(term) || s.mono.toLowerCase().includes(term)) {
+            if (s.model.toLowerCase().includes(term) || (s.mono && s.mono.toLowerCase().includes(term))) {
+                // Use date_entry from DB or fallback
+                const entryDate = s.date_entry ? new Date(s.date_entry).getTime() : Date.now();
+                
                 if (s.status !== 'Vendido') {
-                    const days = APP.daysDiff(s.date);
+                    const days = APP.daysDiff(entryDate);
                     
                     let giroLabel = 'Saudável'; 
                     let giroStyle = 'background:#d1fae5; color:#065f46'; 
@@ -430,7 +517,6 @@ const APP = {
                         giroStyle = 'background:#fef3c7; color:#b45309;'; 
                     }
                     
-                    // Visual Status Badge Logic
                     let statusBadgeClass = 'badge-success';
                     if (s.status === 'Reservado') statusBadgeClass = 'badge-warning';
                     
@@ -446,7 +532,7 @@ const APP = {
                     htmlBuffer += `<tr>
                         <td>${s.type}</td>
                         <td><b>${s.model}</b></td>
-                        <td>${s.mono}</td>
+                        <td>${s.mono || '-'}</td>
                         <td>${s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
                         <td>${days} dias</td>
                         <td><span style="padding:3px 6px; border-radius:4px; font-size:10px; ${giroStyle}">${giroLabel}</span></td>
@@ -459,14 +545,14 @@ const APP = {
                         restoreBtn = `<button onclick="APP.restoreStock('${s.id}')" title="Restaurar para Disponível" class="btn btn-small btn-dark">♻️ Restaurar</button>`;
                     }
                     
-                    const deal = APP.data.deals.find(d => d.stockId === s.id && d.stage === 'ganho');
+                    const deal = APP.data.deals.find(d => d.stock_id === s.id && d.stage === 'ganho');
                     const cliente = deal ? deal.client : '<span style="color:#9ca3af">Desconhecido</span>';
-                    const dataVenda = deal && deal.closeDate ? new Date(deal.closeDate).toLocaleDateString('pt-BR') : '-';
+                    const dataVenda = deal && deal.close_date ? new Date(deal.close_date).toLocaleDateString('pt-BR') : '-';
 
                     htmlSold += `<tr>
                         <td>${dataVenda}</td>
                         <td><b>${s.model}</b></td>
-                        <td>${s.mono}</td>
+                        <td>${s.mono || '-'}</td>
                         <td>${s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
                         <td>${cliente}</td>
                         <td>${restoreBtn}</td>
@@ -492,146 +578,178 @@ const APP = {
         APP.modal('modal-deal');
     },
 
-    saveDeal: (e) => {
+    saveDeal: async (e) => {
         e.preventDefault();
         const id = document.getElementById('deal-id').value;
-        const stockId = document.getElementById('deal-stock').value;
+        const stockId = document.getElementById('deal-stock').value || null; // Ensure null if empty
         
         const dealData = {
             client: document.getElementById('deal-client').value,
             source: document.getElementById('deal-source').value,
             value: APP.parseMoney(document.getElementById('deal-value').value),
-            stockId: stockId,
-            nextDate: document.getElementById('deal-next-date').value,
-            nextDesc: document.getElementById('deal-next-desc').value,
+            stock_id: stockId, // Note: Snake_case for DB
+            next_date: document.getElementById('deal-next-date').value || null,
+            next_desc: document.getElementById('deal-next-desc').value,
+            owner: APP.user.name // Ensure owner is saved
         };
 
-        let dealId = id;
-        let isNew = !id;
-
-        if (isNew) {
-            dealId = '_' + Math.random().toString(36).substr(2,9);
-            const newDeal = {
-                id: dealId, ...dealData, owner: APP.user.name, stage: 'prospeccao', history: []
-            };
-            APP.data.deals.push(newDeal);
-            APP.addDealHistory(dealId, 'Criação', 'Oportunidade criada');
+        if (id) {
+            // Update
+            dealData.id = id;
             
-            if(dealData.nextDate) {
-                const dateBr = dealData.nextDate.split('-').reverse().join('/');
-                APP.addDealHistory(dealId, '📅 Agenda', `Ação inicial: ${dateBr} - ${dealData.nextDesc}`);
-            }
-        } else {
-            const idx = APP.data.deals.findIndex(d => d.id === id);
-            if (idx > -1) {
-                const oldDeal = APP.data.deals[idx];
-                
-                if (oldDeal.stage === 'ganho' && dealData.stockId !== oldDeal.stockId) {
-                        if (dealData.stockId) {
-                        const s = APP.data.stock.find(x => x.id === dealData.stockId);
-                        if (s) {
-                            oldDeal.originalCost = s.cost;
-                            if (s.status !== 'Vendido') s.status = 'Vendido';
-                        }
-                        } else {
-                            oldDeal.originalCost = 0;
-                        }
+            // Check logic for stock change
+            const oldDeal = APP.data.deals.find(d => d.id === id);
+            if(oldDeal && oldDeal.stage === 'ganho' && dealData.stock_id !== oldDeal.stock_id) {
+                // If changing stock on a won deal, update costs
+                if(dealData.stock_id) {
+                    const s = APP.data.stock.find(x => x.id === dealData.stock_id);
+                    if(s) dealData.original_cost = s.cost;
+                } else {
+                    dealData.original_cost = 0;
                 }
+            }
 
-                if(!oldDeal.history) oldDeal.history = [];
-                if (dealData.nextDate && (dealData.nextDate !== oldDeal.nextDate || dealData.nextDesc !== oldDeal.nextDesc)) {
-                    const dateBr = dealData.nextDate.split('-').reverse().join('/');
-                    APP.addDealHistory(id, '📅 Agenda', `Nova ação proposta: ${dateBr} - ${dealData.nextDesc}`);
-                }
-                Object.assign(oldDeal, dealData);
+            // History logic
+            if(!oldDeal.history) oldDeal.history = [];
+            let newHist = oldDeal.history;
+            if (dealData.next_date && (dealData.next_date !== oldDeal.next_date || dealData.next_desc !== oldDeal.next_desc)) {
+                const dateBr = dealData.next_date.split('-').reverse().join('/');
+                newHist.push({date: Date.now(), user: APP.user.name, action: 'Agenda', detail: `Nova ação: ${dateBr} - ${dealData.next_desc}`});
             }
+            dealData.history = newHist;
+
+            const { data, error } = await supabase.from('deals').update(dealData).eq('id', id).select();
+            if(error) return alert("Erro: " + error.message);
+            APP.refreshLocal('deals', data[0]);
+
+        } else {
+            // Insert
+            dealData.stage = 'prospeccao';
+            dealData.history = [{date: Date.now(), user: APP.user.name, action: 'Criação', detail: 'Oportunidade criada'}];
+            
+            if(dealData.next_date) {
+                const dateBr = dealData.next_date.split('-').reverse().join('/');
+                dealData.history.push({date: Date.now(), user: APP.user.name, action: 'Agenda', detail: `Inicial: ${dateBr} - ${dealData.next_desc}`});
+            }
+
+            const { data, error } = await supabase.from('deals').insert(dealData).select();
+            if(error) return alert("Erro: " + error.message);
+            APP.refreshLocal('deals', data[0]);
         }
         
+        // Update Stock Status
         if(stockId) {
             const s = APP.data.stock.find(x => x.id === stockId);
             if(s && s.status !== 'Reservado' && s.status !== 'Vendido') {
-                s.status = 'Reservado';
-                APP.addHistory(stockId, 'Reservado', `Vinculado ao cliente ${dealData.client}`);
+                const newHist = APP.addLog(s, 'Reservado', `Vinculado ao cliente ${dealData.client}`);
+                await supabase.from('stock').update({status: 'Reservado', history: newHist}).eq('id', stockId);
+                s.status = 'Reservado'; // Local update
             }
         }
 
-        APP.save(); APP.closeModals(); APP.nav('funil');
+        APP.closeModals(); 
+        APP.nav('funil');
     },
 
     editDeal: (id) => { 
         const d = APP.data.deals.find(x => x.id === id); 
         if (!d) return; 
-        APP.prepareDeal(d.stockId); 
+        APP.prepareDeal(d.stock_id); // Note: stock_id
         document.getElementById('deal-id').value = d.id; 
         document.getElementById('deal-client').value = d.client; 
         document.getElementById('deal-source').value = d.source || 'Loja/Passante';
         document.getElementById('deal-value').value = d.value.toLocaleString('pt-BR', {minimumFractionDigits:2}); 
-        document.getElementById('deal-type').value = d.stockId ? 'maquina' : 'consorcio'; 
-        document.getElementById('deal-next-date').value = d.nextDate || ''; 
-        document.getElementById('deal-next-desc').value = d.nextDesc || ''; 
+        document.getElementById('deal-type').value = d.stock_id ? 'maquina' : 'consorcio'; 
+        document.getElementById('deal-next-date').value = d.next_date || ''; 
+        document.getElementById('deal-next-desc').value = d.next_desc || ''; 
         APP.toggleStock();
     },
 
-    deleteDeal: (id) => {
-        if(confirm('Tem certeza que deseja EXCLUIR esta oportunidade?')) {
+    deleteDeal: async (id) => {
+        if(confirm('Excluir oportunidade?')) {
             const deal = APP.data.deals.find(d => d.id === id);
-            if(deal && deal.stockId) {
-                const s = APP.data.stock.find(x => x.id === deal.stockId);
+            
+            const { error } = await supabase.from('deals').delete().eq('id', id);
+            if(error) return alert("Erro: " + error.message);
+
+            if(deal && deal.stock_id) {
+                const s = APP.data.stock.find(x => x.id === deal.stock_id);
                 if(s && s.status === 'Reservado') {
+                    const newHist = APP.addLog(s, 'Liberação', 'Oportunidade excluída');
+                    await supabase.from('stock').update({status: 'Disponível', history: newHist}).eq('id', s.id);
                     s.status = 'Disponível';
-                    APP.addHistory(s.id, 'Liberação', 'Oportunidade excluída');
                 }
             }
-            APP.data.deals = APP.data.deals.filter(d => d.id !== id);
-            APP.save(); APP.renderKanban(); APP.renderKPIs(); APP.toast('Oportunidade excluída!');
+            
+            APP.refreshLocal('deals', {id}, true);
+            APP.toast('Oportunidade excluída!');
         }
     },
 
-    updateStage: (id, stage) => {
+    updateStage: async (id, stage) => {
         const deal = APP.data.deals.find(d => d.id === id);
         if (!deal) return;
         const oldStage = deal.stage;
         let motivoPerda = '';
         
+        let updates = { stage: stage };
+
         if (stage === 'perdido') {
-            motivoPerda = prompt("Qual o motivo da perda? (Ex: Preço, Crédito, Concorrência...)");
+            motivoPerda = prompt("Motivo da perda?");
             if (motivoPerda === null) { APP.renderKanban(); return; }
-            if (motivoPerda.trim() === '') motivoPerda = 'Não informado';
-            deal.nextDesc = `⛔ PERDA: ${motivoPerda}`;
-            deal.nextDate = new Date().toISOString().split('T')[0];
+            if (!motivoPerda) motivoPerda = 'Não informado';
+            updates.next_desc = `⛔ PERDA: ${motivoPerda}`;
+            updates.next_date = new Date().toISOString().split('T')[0];
         }
 
         if (stage === 'ganho' && oldStage !== 'ganho') {
-            deal.closeDate = Date.now();
-            if (deal.stockId) {
-                const s = APP.data.stock.find(x => x.id === deal.stockId);
-                if (s) deal.originalCost = s.cost;
+            updates.close_date = new Date().toISOString();
+            if (deal.stock_id) {
+                const s = APP.data.stock.find(x => x.id === deal.stock_id);
+                if (s) updates.original_cost = s.cost;
             } else {
-                deal.originalCost = 0;
+                updates.original_cost = 0;
             }
         }
 
-        deal.stage = stage;
-        APP.addDealHistory(deal.id, 'Movimentação', `Mudou de ${oldStage.toUpperCase()} para ${stage.toUpperCase()}` + (motivoPerda ? ` (${motivoPerda})` : ''));
+        // History
+        let newHistory = APP.addLog(deal, 'Movimentação', `De ${oldStage.toUpperCase()} para ${stage.toUpperCase()}` + (motivoPerda ? ` (${motivoPerda})` : ''));
+        updates.history = newHistory;
 
-        if (deal.stockId) {
-            const s = APP.data.stock.find(x => x.id === deal.stockId);
+        // DB Update
+        const { error } = await supabase.from('deals').update(updates).eq('id', id);
+        if(error) return alert("Erro: " + error.message);
+
+        // Update Local
+        Object.assign(deal, updates);
+
+        // Stock Effects
+        if (deal.stock_id) {
+            const s = APP.data.stock.find(x => x.id === deal.stock_id);
             if (s) {
+                let sUpdates = {};
+                let sAction = '';
                 if (stage === 'ganho') {
-                    s.status = 'Vendido';
-                    APP.addHistory(deal.stockId, 'Venda', `Negócio fechado com ${deal.client}`);
+                    sUpdates.status = 'Vendido';
+                    sAction = 'Venda';
                 } else if (stage === 'perdido') {
-                    s.status = 'Disponível';
-                    APP.addHistory(deal.stockId, 'Perda', `Motivo: ${motivoPerda} (Cliente: ${deal.client})`);
+                    sUpdates.status = 'Disponível';
+                    sAction = 'Perda';
                 } else {
                     if(s.status !== 'Reservado') {
-                        s.status = 'Reservado';
-                        APP.addHistory(deal.stockId, 'Reserva', `Reativado no funil`);
+                        sUpdates.status = 'Reservado';
+                        sAction = 'Reserva';
                     }
+                }
+
+                if(sAction) {
+                    s.status = sUpdates.status;
+                    sUpdates.history = APP.addLog(s, sAction, `Negócio: ${deal.client}`);
+                    await supabase.from('stock').update(sUpdates).eq('id', s.id);
                 }
             }
         }
-        APP.save();
+        APP.renderAll();
     },
 
     renderKanban: () => {
@@ -664,12 +782,12 @@ const APP = {
             
             items.forEach(d => {
                 let actionHtml = '';
-                if(d.stage === 'perdido' && d.nextDesc && d.nextDesc.includes('PERDA')) { actionHtml = `<div class="card-action" style="color:#991b1b; font-weight:800; background:#fee2e2;">${d.nextDesc}</div>`; }
-                else if(d.nextDate) {
+                if(d.stage === 'perdido' && d.next_desc && d.next_desc.includes('PERDA')) { actionHtml = `<div class="card-action" style="color:#991b1b; font-weight:800; background:#fee2e2;">${d.next_desc}</div>`; }
+                else if(d.next_date) {
                     const today = new Date().toISOString().split('T')[0];
-                    const color = d.nextDate < today ? '#ef4444' : '#2563eb';
-                    const dateBr = d.nextDate.split('-').reverse().join('/');
-                    actionHtml = `<div class="card-action" style="color:${color}">📅 ${dateBr} - ${d.nextDesc}</div>`;
+                    const color = d.next_date < today ? '#ef4444' : '#2563eb';
+                    const dateBr = d.next_date.split('-').reverse().join('/');
+                    actionHtml = `<div class="card-action" style="color:${color}">📅 ${dateBr} - ${d.next_desc}</div>`;
                 }
                 html += `<div class="card" draggable="true" onclick="APP.editDeal('${d.id}')" ondragstart="APP.dragId='${d.id}'; this.classList.add('dragging')" ondragend="this.classList.remove('dragging')"><div class="card-tags"><span class="tag">👤 ${d.owner}</span><div class="card-btn-group"><button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button><button class="btn-card-icon btn-card-delete" onclick="event.stopPropagation(); APP.deleteDeal('${d.id}')" title="Excluir">🗑️</button></div></div><div style="font-weight:800; margin-bottom:5px;">${d.client}</div><div style="font-weight:700; color:#374151;">${d.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>${actionHtml}</div>`;
             });
@@ -684,7 +802,7 @@ const APP = {
         const container = document.getElementById('agenda-content');
         if(!container) return;
 
-        let deals = APP.data.deals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido' && d.nextDate);
+        let deals = APP.data.deals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido' && d.next_date);
         if (APP.user.role !== 'gestor') { 
             deals = deals.filter(d => d.owner === APP.user.name); 
         }
@@ -699,11 +817,11 @@ const APP = {
         const todayList = [];
         const future = [];
 
-        deals.sort((a,b) => a.nextDate.localeCompare(b.nextDate));
+        deals.sort((a,b) => a.next_date.localeCompare(b.next_date));
 
         deals.forEach(d => {
-            if (d.nextDate < today) delayed.push(d);
-            else if (d.nextDate === today) todayList.push(d);
+            if (d.next_date < today) delayed.push(d);
+            else if (d.next_date === today) todayList.push(d);
             else future.push(d);
         });
 
@@ -711,13 +829,13 @@ const APP = {
             if(list.length === 0) return '';
             let html = `<div class="agenda-group"><h4>${title} (${list.length})</h4>`;
             list.forEach(d => {
-                const dateBr = d.nextDate.split('-').reverse().join('/');
+                const dateBr = d.next_date.split('-').reverse().join('/');
                 html += `
                     <div class="agenda-item ${className}" onclick="APP.editDeal('${d.id}')" style="cursor:pointer">
                         <div class="agenda-date">${dateBr}</div>
                         <div class="agenda-info">
                             <div class="agenda-client">${d.client}</div>
-                            <div class="agenda-desc">${d.nextDesc || 'Sem descrição'}</div>
+                            <div class="agenda-desc">${d.next_desc || 'Sem descrição'}</div>
                         </div>
                         <div style="font-size:10px; font-weight:700; background:#f3f4f6; padding:2px 5px; border-radius:3px; text-transform:uppercase;">${d.owner}</div>
                     </div>
@@ -748,10 +866,10 @@ const APP = {
         let totalMargin = 0;
         wonDeals.forEach(d => {
             let cost = 0;
-            if (d.originalCost !== undefined) {
-                cost = d.originalCost;
-            } else if (d.stockId) {
-                const stockItem = APP.data.stock.find(s => s.id === d.stockId);
+            if (d.original_cost !== undefined) {
+                cost = d.original_cost;
+            } else if (d.stock_id) {
+                const stockItem = APP.data.stock.find(s => s.id === d.stock_id);
                 if (stockItem) {
                     cost = stockItem.cost;
                 }
@@ -793,7 +911,9 @@ const APP = {
             if(!types[s.type]) types[s.type] = 0;
             types[s.type] += s.cost;
             totalStockValue += s.cost;
-            if(APP.daysDiff(s.date) > 365) criticalValue += s.cost;
+            // Diff date from DB (date_entry)
+            const entryDate = s.date_entry ? new Date(s.date_entry).getTime() : Date.now();
+            if(APP.daysDiff(entryDate) > 365) criticalValue += s.cost;
         });
 
         let gridHtml = '';
@@ -823,7 +943,8 @@ const APP = {
         let count = 0;
 
         APP.data.deals.forEach(d => {
-            const dealDate = d.closeDate || (d.history && d.history[0] ? d.history[0].date : 0);
+            const dealDateStr = d.close_date || (d.history && d.history[0] ? d.history[0].date : 0);
+            const dealDate = new Date(dealDateStr).getTime();
             
             if (d.stage === 'ganho' && dealDate >= startDate && dealDate < endDate) {
                 if (sourceFilter !== 'all' && d.source !== sourceFilter) return;
@@ -835,15 +956,15 @@ const APP = {
                 let prodName = 'Consórcio/Serviço';
                 let cost = 0;
 
-                if(d.stockId) {
-                    const s = APP.data.stock.find(x => x.id === d.stockId);
+                if(d.stock_id) {
+                    const s = APP.data.stock.find(x => x.id === d.stock_id);
                     if(s) prodName = s.model;
                 }
                 
-                if (d.originalCost !== undefined) {
-                    cost = d.originalCost;
-                } else if (d.stockId) {
-                    const stockItem = APP.data.stock.find(s => s.id === d.stockId);
+                if (d.original_cost !== undefined) {
+                    cost = d.original_cost;
+                } else if (d.stock_id) {
+                    const stockItem = APP.data.stock.find(s => s.id === d.stock_id);
                     if (stockItem) cost = stockItem.cost;
                 }
 
@@ -885,7 +1006,7 @@ const APP = {
         if(!list || list.length === 0) {
             container.innerHTML = '<div style="text-align:center; color:#9ca3af; padding:20px;">Sem histórico registrado.</div>';
         } else {
-            container.innerHTML = list.sort((a,b) => b.date - a.date).map(h => {
+            container.innerHTML = list.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(h => {
                 const dateObj = new Date(h.date);
                 const dateStr = dateObj.toLocaleDateString('pt-BR') + ' ' + dateObj.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
                 return `<div class="timeline-item"><div class="timeline-date">${dateStr}</div><div class="timeline-action">${h.action}</div><div class="timeline-detail">${h.detail}</div><div class="timeline-user">Por: ${h.user || 'Sistema'}</div></div>`;
