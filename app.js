@@ -1,5 +1,5 @@
 /**
- * YATTA CRM - v3.9.15 (CLOUD - CORRIGIDO V2)
+ * YATTA CRM - v3.9.15 (CLOUD - LOGIN SEGURO)
  * Conectado ao Supabase (PostgreSQL)
  */
 
@@ -76,7 +76,7 @@ const APP = {
 
     // Garante que existe pelo menos um gestor
     ensureDefaultUser: async () => {
-        const defaultUser = {name: 'Gestor Inicial', role: 'gestor'};
+        const defaultUser = {name: 'Gestor Inicial', role: 'gestor', password: '1234'}; // Senha padrão
         const { data, error } = await supabaseClient.from('users').insert(defaultUser).select();
         if (!error && data) {
             APP.data.users.push(data[0]);
@@ -182,9 +182,18 @@ const APP = {
      * AUTENTICAÇÃO
      */
     login: (name) => {
-        APP.user = APP.data.users.find(u => u.name === name);
-        if (!APP.user) return alert("Usuário não encontrado.");
+        const user = APP.data.users.find(u => u.name === name);
+        if (!user) return alert("Usuário não encontrado.");
 
+        // VERIFICAÇÃO DE SENHA
+        if (user.password) {
+            const input = prompt(`Olá ${user.name}, por favor digite sua senha:`);
+            if (input !== user.password) {
+                return alert("Senha incorreta!");
+            }
+        }
+
+        APP.user = user;
         document.getElementById('user-overlay').style.display = 'none';
         document.getElementById('user-info').innerText = APP.user.name;
         
@@ -219,9 +228,14 @@ const APP = {
 
     saveUser: async (e) => {
         e.preventDefault();
+        
+        // Pede senha ao criar usuário
+        const pwd = prompt("Defina uma senha para este usuário (Opcional - Deixe em branco para sem senha):");
+        
         const userData = { 
             name: document.getElementById('usr-name').value, 
-            role: document.getElementById('usr-role').value 
+            role: document.getElementById('usr-role').value,
+            password: pwd || null 
         };
         
         const { data, error } = await supabaseClient.from('users').insert(userData).select();
@@ -1078,4 +1092,4 @@ const APP = {
 };
 
 // INICIA O APP
-document.addEventListener('DOMContentLoaded', APP.init);	
+document.addEventListener('DOMContentLoaded', APP.init);
