@@ -1,5 +1,5 @@
 /**
- * YATTA CRM - v3.9.15 (CLOUD - LOGIN SEGURO)
+ * YATTA CRM - v3.9.16 (CLOUD - PERMISSÕES CORRIGIDAS)
  * Conectado ao Supabase (PostgreSQL)
  */
 
@@ -8,7 +8,6 @@ const SUPABASE_URL = 'https://igvdhpzzjamoyetxickb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_mXmrR5peC1mICxxMxjDKrg_2NJUZG0Q'; // Chave fornecida
 
 // Inicializa o cliente Supabase
-// Mudamos o nome da variável para 'supabaseClient' para não conflitar com a biblioteca global
 let supabaseClient;
 
 if (window.supabase && window.supabase.createClient) {
@@ -17,7 +16,6 @@ if (window.supabase && window.supabase.createClient) {
     supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 } else {
     console.error("ERRO CRÍTICO: Biblioteca Supabase não encontrada.");
-    // Fallback: Tenta acessar via objeto global direto se disponível
     if (window.supabase) {
         try {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -26,21 +24,16 @@ if (window.supabase && window.supabase.createClient) {
 }
 
 const APP = {
-    // Estado Local (Cache para renderização rápida)
     data: { stock: [], users: [], deals: [], clients: [] },
     user: null,
     dragId: null,
 
-    /**
-     * INICIALIZAÇÃO (Carrega dados da Nuvem)
-     */
     init: async () => {
         if (!supabaseClient) {
-            alert("ERRO: Não foi possível conectar ao banco de dados. Verifique o console (F12) para detalhes.");
+            alert("ERRO: Não foi possível conectar ao banco de dados.");
             return;
         }
 
-        // Carrega dados em paralelo para ser mais rápido
         const [usersReq, clientsReq, stockReq, dealsReq] = await Promise.all([
             supabaseClient.from('users').select('*'),
             supabaseClient.from('clients').select('*'),
@@ -49,19 +42,16 @@ const APP = {
         ]);
 
         if (usersReq.error) console.error("Erro Users:", usersReq.error);
-        if (clientsReq.error) console.error("Erro Clients:", clientsReq.error);
         
         APP.data.users = usersReq.data || [];
         APP.data.clients = clientsReq.data || [];
         APP.data.stock = stockReq.data || [];
         APP.data.deals = dealsReq.data || [];
 
-        // Se não houver usuários (primeiro uso), cria o padrão na memória para login
         if (APP.data.users.length === 0) {
             await APP.ensureDefaultUser();
         }
 
-        // Configura datas dos filtros
         const now = new Date();
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
         const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -71,12 +61,11 @@ const APP = {
         if(endInput) endInput.value = lastDay.toISOString().split('T')[0];
 
         APP.renderUserSelect();
-        APP.renderAll(); // Renderiza com os dados carregados
+        APP.renderAll(); 
     },
 
-    // Garante que existe pelo menos um gestor
     ensureDefaultUser: async () => {
-        const defaultUser = {name: 'Gestor Inicial', role: 'gestor', password: '1234'}; // Senha padrão
+        const defaultUser = {name: 'Gestor Inicial', role: 'gestor'}; 
         const { data, error } = await supabaseClient.from('users').insert(defaultUser).select();
         if (!error && data) {
             APP.data.users.push(data[0]);
@@ -85,32 +74,24 @@ const APP = {
         }
     },
 
-    /**
-     * UTILITÁRIOS
-     */
-    // Gera UUID compatível com o banco (v4)
     uuid: () => {
         return crypto.randomUUID(); 
     },
 
-    // Função auxiliar para atualizar o estado local e re-renderizar
     refreshLocal: (table, item, isDelete = false) => {
         if (isDelete) {
             APP.data[table] = APP.data[table].filter(i => i.id !== item.id);
         } else {
             const idx = APP.data[table].findIndex(i => i.id === item.id);
             if (idx > -1) {
-                APP.data[table][idx] = item; // Atualiza existente
+                APP.data[table][idx] = item; 
             } else {
-                APP.data[table].push(item); // Adiciona novo
+                APP.data[table].push(item); 
             }
         }
         APP.renderAll();
     },
 
-    /**
-     * LOGS E HISTÓRICO
-     */
     addLog: (obj, action, detail) => {
         if(!obj.history) obj.history = [];
         obj.history.push({
@@ -122,12 +103,10 @@ const APP = {
         return obj.history;
     },
 
-    // Helpers para salvar histórico no banco
     addHistory: async (stockId, action, detail) => {
         const item = APP.data.stock.find(s => s.id === stockId);
         if(!item) return;
         const newHistory = APP.addLog(item, action, detail);
-        // Atualiza apenas o campo history no banco
         await supabaseClient.from('stock').update({ history: newHistory }).eq('id', stockId);
     },
 
@@ -138,9 +117,6 @@ const APP = {
         await supabaseClient.from('deals').update({ history: newHistory }).eq('id', dealId);
     },
 
-    /**
-     * INTERFACE UI / UX
-     */
     toggleMenu: () => {
         document.getElementById('sidebar').classList.toggle('open');
     },
@@ -178,14 +154,10 @@ const APP = {
         document.querySelectorAll('form').forEach(f => f.reset()); 
     },
 
-    /**
-     * AUTENTICAÇÃO
-     */
     login: (name) => {
         const user = APP.data.users.find(u => u.name === name);
         if (!user) return alert("Usuário não encontrado.");
 
-        // VERIFICAÇÃO DE SENHA
         if (user.password) {
             const input = prompt(`Olá ${user.name}, por favor digite sua senha:`);
             if (input !== user.password) {
@@ -199,7 +171,17 @@ const APP = {
         
         const isGestor = APP.user.role === 'gestor';
         const gestorBtns = document.querySelectorAll('.gestor-ctrl');
-        gestorBtns.forEach(btn => btn.style.display = isGestor ? 'inline-block' : 'none');
+        
+        // CORREÇÃO VISUAL: Força a atualização do display dos botões de gestor
+        gestorBtns.forEach(btn => {
+            if (isGestor) {
+                btn.style.setProperty('display', 'inline-flex', 'important');
+                btn.classList.add('show-gestor');
+            } else {
+                btn.style.setProperty('display', 'none', 'important');
+                btn.classList.remove('show-gestor');
+            }
+        });
         
         const filter = document.getElementById('filter-user');
         const sellerFilter = document.getElementById('rep-seller'); 
@@ -229,7 +211,11 @@ const APP = {
     saveUser: async (e) => {
         e.preventDefault();
         
-        // Pede senha ao criar usuário
+        // SEGURANÇA: Apenas gestor pode criar usuário
+        if (APP.user.role !== 'gestor') {
+            return alert("Acesso negado: Apenas gestores podem adicionar membros.");
+        }
+
         const pwd = prompt("Defina uma senha para este usuário (Opcional - Deixe em branco para sem senha):");
         
         const userData = { 
@@ -252,8 +238,13 @@ const APP = {
     },
 
     renderUsers: () => {
-        // Tabela de usuários
-        document.querySelector('#table-users tbody').innerHTML = APP.data.users.map(u => `<tr><td>${u.name}</td><td>${u.role}</td><td><button class="btn btn-small btn-danger" onclick="APP.deleteUser(${u.id})">Excluir</button></td></tr>`).join('');
+        // CORREÇÃO: Botão excluir só aparece para gestores
+        const isGestor = APP.user && APP.user.role === 'gestor';
+
+        document.querySelector('#table-users tbody').innerHTML = APP.data.users.map(u => {
+            const deleteBtn = isGestor ? `<button class="btn btn-small btn-danger" onclick="APP.deleteUser(${u.id})">Excluir</button>` : '';
+            return `<tr><td>${u.name}</td><td>${u.role}</td><td>${deleteBtn}</td></tr>`;
+        }).join('');
         
         // Performance
         const tbPerf = document.querySelector('#table-performance tbody');
@@ -288,6 +279,11 @@ const APP = {
     },
 
     deleteUser: async (id) => {
+        // SEGURANÇA: Apenas gestor pode excluir
+        if (APP.user.role !== 'gestor') {
+            return alert("Acesso negado: Apenas gestores podem remover membros.");
+        }
+
         if(confirm('Excluir usuário?')) {
             const { error } = await supabaseClient.from('users').delete().eq('id', id);
             if(error) return alert("Erro: " + error.message);
@@ -298,26 +294,18 @@ const APP = {
         }
     },
 
-    /**
-     * MÓDULO: CLIENTES
-     */
     saveClient: async (e) => {
         e.preventDefault();
         const id = document.getElementById('cli-id').value;
-        
         const cliData = {
             name: document.getElementById('cli-name').value,
             phone: document.getElementById('cli-phone').value,
             email: document.getElementById('cli-email').value,
             obs: document.getElementById('cli-obs').value
         };
-
-        if (id) cliData.id = id; // Update
-
+        if (id) cliData.id = id;
         const { data, error } = await supabaseClient.from('clients').upsert(cliData).select();
-        
-        if(error) return alert("Erro ao salvar cliente: " + error.message);
-
+        if(error) return alert("Erro: " + error.message);
         APP.refreshLocal('clients', data[0]);
         APP.closeModals(); 
     },
@@ -345,34 +333,22 @@ const APP = {
         const term = document.getElementById('search-client').value.toLowerCase();
         const tbody = document.querySelector('#table-clients tbody');
         if(!tbody) return;
-
         const filtered = APP.data.clients.filter(c => c.name.toLowerCase().includes(term));
-        
         tbody.innerHTML = filtered.map(c => `
             <tr>
                 <td><b>${c.name}</b></td>
-                <td style="display:flex; gap:5px; align-items:center;">
-                    ${c.phone}
-                    ${c.phone ? `<a href="#" onclick="APP.openWhatsapp('${c.phone}')" class="btn-whatsapp">Zap</a>` : ''}
-                </td>
+                <td style="display:flex; gap:5px; align-items:center;">${c.phone} ${c.phone ? `<a href="#" onclick="APP.openWhatsapp('${c.phone}')" class="btn-whatsapp">Zap</a>` : ''}</td>
                 <td>${c.email || '-'}</td>
                 <td>${c.obs || '-'}</td>
-                <td>
-                    <button onclick="APP.editClient('${c.id}')" class="btn btn-small btn-main">✏️</button>
-                    <button onclick="APP.deleteClient('${c.id}')" class="btn btn-small btn-danger">×</button>
-                </td>
+                <td><button onclick="APP.editClient('${c.id}')" class="btn btn-small btn-main">✏️</button> <button onclick="APP.deleteClient('${c.id}')" class="btn btn-small btn-danger">×</button></td>
             </tr>
         `).join('');
     },
 
-    /**
-     * MÓDULO: ESTOQUE
-     */
     importStock: (e) => {
         if(APP.user.role !== 'gestor') return alert('Acesso negado');
         const file = e.target.files[0];
         if (!file) return;
-        
         const reader = new FileReader();
         reader.readAsText(file, 'ISO-8859-1');
         reader.onload = async (evt) => {
@@ -380,7 +356,6 @@ const APP = {
             const lines = text.split('\n');
             let count = 0;
             const newItems = [];
-
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
@@ -390,35 +365,24 @@ const APP = {
                     const costStr = cols[3];
                     const dateStr = cols[4];
                     if (model && model !== 'N/A') {
-                        // Converter data DD/MM/AAAA para YYYY-MM-DD para o Banco
                         let dbDate = new Date().toISOString(); 
                         if(dateStr) {
                             const parts = dateStr.trim().split('/');
                             if(parts.length === 3) dbDate = new Date(parts[2], parts[1]-1, parts[0]).toISOString();
                         }
-
                         newItems.push({
-                            type: cols[0], 
-                            model: model, 
-                            mono: cols[2],
-                            cost: APP.parseMoney(costStr), 
-                            date_entry: dbDate,
-                            status: 'Disponível', 
-                            history: [{date: Date.now(), user: APP.user.name, action: 'Importação', detail: 'Via CSV'}]
+                            type: cols[0], model: model, mono: cols[2],
+                            cost: APP.parseMoney(costStr), date_entry: dbDate,
+                            status: 'Disponível', history: [{date: Date.now(), user: APP.user.name, action: 'Importação', detail: 'Via CSV'}]
                         });
                         count++;
                     }
                 }
             }
-
             if(newItems.length > 0) {
                 const { data, error } = await supabaseClient.from('stock').insert(newItems).select();
-                if(error) alert("Erro na importação: " + error.message);
-                else {
-                    APP.data.stock.push(...data);
-                    APP.toast(`${count} itens importados!`);
-                    APP.renderStock();
-                }
+                if(error) alert("Erro: " + error.message);
+                else { APP.data.stock.push(...data); APP.toast(`${count} itens importados!`); APP.renderStock(); }
             }
             e.target.value = '';
         };
@@ -427,34 +391,26 @@ const APP = {
     saveStock: async (e) => {
         e.preventDefault();
         if(APP.user.role !== 'gestor') return alert('Apenas gestores podem editar estoque.');
-
         const id = document.getElementById('stk-item-id-unique').value; 
-        
         const itemData = {
             type: document.getElementById('stk-type').value,
             model: document.getElementById('stk-model').value,
             mono: document.getElementById('stk-mono').value,
             cost: APP.parseMoney(document.getElementById('stk-cost').value)
         };
-
         if (id) {
             itemData.id = id;
-            // Edição: Mantém histórico e status
-            APP.addHistory(id, 'Edição', 'Dados atualizados'); // Atualiza histórico via função separada
-            // Salva dados básicos
+            APP.addHistory(id, 'Edição', 'Dados atualizados'); 
             const { data, error } = await supabaseClient.from('stock').update(itemData).eq('id', id).select();
             if(!error) APP.refreshLocal('stock', data[0]);
         } else {
-            // Novo
             itemData.status = 'Disponível';
             itemData.date_entry = new Date().toISOString();
             itemData.history = [{date: Date.now(), user: APP.user.name, action: 'Criação', detail: 'Manual'}];
-            
             const { data, error } = await supabaseClient.from('stock').insert(itemData).select();
             if(error) return alert("Erro: " + error.message);
             APP.refreshLocal('stock', data[0]);
         }
-        
         APP.closeModals();
     },
 
@@ -473,27 +429,16 @@ const APP = {
         if(confirm('Restaurar para Disponível?')) {
             const item = APP.data.stock.find(s => s.id === id);
             if(item) {
-                // Remove vínculo da venda
                 const deal = APP.data.deals.find(d => d.stock_id === id && d.stage === 'ganho');
                 if(deal) {
                     await supabaseClient.from('deals').update({stock_id: null}).eq('id', deal.id);
                     APP.addDealHistory(deal.id, 'Desvinculo', 'Item restaurado ao estoque.');
-                    deal.stock_id = null; // Update local deal
+                    deal.stock_id = null; 
                 }
-
-                // Atualiza item
                 item.status = 'Disponível';
-                APP.addLog(item, 'Restauração', 'Manual'); // Update local history array
-                
-                const { error } = await supabaseClient.from('stock').update({
-                    status: 'Disponível', 
-                    history: item.history
-                }).eq('id', id);
-
-                if(!error) {
-                    APP.toast('Item restaurado!');
-                    APP.renderStock();
-                }
+                APP.addLog(item, 'Restauração', 'Manual'); 
+                const { error } = await supabaseClient.from('stock').update({status: 'Disponível', history: item.history}).eq('id', id);
+                if(!error) { APP.toast('Item restaurado!'); APP.renderStock(); }
             }
         }
     },
@@ -511,7 +456,7 @@ const APP = {
         const s = APP.data.stock.find(x => x.id === id); 
         document.getElementById('stk-item-id-unique').value = s.id; 
         document.getElementById('stk-model').value = s.model; 
-        document.getElementById('stk-mono').value = s.mono; // Fix: was missing
+        document.getElementById('stk-mono').value = s.mono;
         document.getElementById('stk-cost').value = s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2}); 
         APP.modal('modal-item'); 
     },
@@ -522,76 +467,37 @@ const APP = {
         const term = document.getElementById('search-stock').value.toLowerCase();
         const tbody = document.querySelector('#table-stock tbody');
         const tbodySold = document.querySelector('#table-stock-sold tbody');
-        let htmlBuffer = ''; 
-        let htmlSold = '';
-        
+        let htmlBuffer = ''; let htmlSold = '';
         const isGestor = APP.user.role === 'gestor';
 
         APP.data.stock.forEach(s => {
             if (s.model.toLowerCase().includes(term) || (s.mono && s.mono.toLowerCase().includes(term))) {
-                // Use date_entry from DB or fallback
                 const entryDate = s.date_entry ? new Date(s.date_entry).getTime() : Date.now();
-                
                 if (s.status !== 'Vendido') {
                     const days = APP.daysDiff(entryDate);
-                    
-                    let giroLabel = 'Saudável'; 
-                    let giroStyle = 'background:#d1fae5; color:#065f46'; 
-
-                    if (days > 365) { 
-                        giroLabel = 'URGENTE'; 
-                        giroStyle = 'background:#450a0a; color:#fecaca; font-weight:900;'; 
-                    } else if (days > 210) {
-                        giroLabel = 'Crítico'; 
-                        giroStyle = 'background:#fee2e2; color:#991b1b; font-weight:bold;'; 
-                    } else if (days > 150) {
-                        giroLabel = 'Lento'; 
-                        giroStyle = 'background:#ffedd5; color:#ea580c;'; 
-                    } else if (days > 90) {
-                        giroLabel = 'Atenção';
-                        giroStyle = 'background:#fef3c7; color:#b45309;'; 
-                    }
+                    let giroStyle = 'background:#d1fae5; color:#065f46'; let giroLabel = 'Saudável';
+                    if (days > 365) { giroLabel = 'URGENTE'; giroStyle = 'background:#450a0a; color:#fecaca; font-weight:900;'; } 
+                    else if (days > 210) { giroLabel = 'Crítico'; giroStyle = 'background:#fee2e2; color:#991b1b; font-weight:bold;'; } 
+                    else if (days > 150) { giroLabel = 'Lento'; giroStyle = 'background:#ffedd5; color:#ea580c;'; } 
+                    else if (days > 90) { giroLabel = 'Atenção'; giroStyle = 'background:#fef3c7; color:#b45309;'; }
                     
                     let statusBadgeClass = 'badge-success';
                     if (s.status === 'Reservado') statusBadgeClass = 'badge-warning';
                     
                     let actionHtml = '';
                     if(isGestor) {
-                        actionHtml = `<button onclick="APP.editStock('${s.id}')" title="Editar" class="btn btn-small btn-main">✏️</button>
-                                      <button onclick="APP.viewHistory('${s.id}', 'stock')" title="Histórico" class="btn btn-small btn-dark">📜</button>
-                                      <button onclick="APP.deleteStock('${s.id}')" title="Excluir" class="btn btn-small btn-danger">×</button>`;
+                        actionHtml = `<button onclick="APP.editStock('${s.id}')" title="Editar" class="btn btn-small btn-main">✏️</button> <button onclick="APP.viewHistory('${s.id}', 'stock')" title="Histórico" class="btn btn-small btn-dark">📜</button> <button onclick="APP.deleteStock('${s.id}')" title="Excluir" class="btn btn-small btn-danger">×</button>`;
                     } else {
                         actionHtml = `<button onclick="APP.viewHistory('${s.id}', 'stock')" title="Histórico" class="btn btn-small btn-dark">📜 Detalhes</button>`;
                     }
-
-                    htmlBuffer += `<tr>
-                        <td>${s.type}</td>
-                        <td><b>${s.model}</b></td>
-                        <td>${s.mono || '-'}</td>
-                        <td>${s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-                        <td>${days} dias</td>
-                        <td><span style="padding:3px 6px; border-radius:4px; font-size:10px; ${giroStyle}">${giroLabel}</span></td>
-                        <td><span class="badge ${statusBadgeClass}">${s.status}</span></td>
-                        <td>${actionHtml}</td>
-                    </tr>`;
+                    htmlBuffer += `<tr><td>${s.type}</td><td><b>${s.model}</b></td><td>${s.mono || '-'}</td><td>${s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td><td>${days} dias</td><td><span style="padding:3px 6px; border-radius:4px; font-size:10px; ${giroStyle}">${giroLabel}</span></td><td><span class="badge ${statusBadgeClass}">${s.status}</span></td><td>${actionHtml}</td></tr>`;
                 } else {
                     let restoreBtn = '';
-                    if(isGestor) {
-                        restoreBtn = `<button onclick="APP.restoreStock('${s.id}')" title="Restaurar para Disponível" class="btn btn-small btn-dark">♻️ Restaurar</button>`;
-                    }
-                    
+                    if(isGestor) { restoreBtn = `<button onclick="APP.restoreStock('${s.id}')" title="Restaurar para Disponível" class="btn btn-small btn-dark">♻️ Restaurar</button>`; }
                     const deal = APP.data.deals.find(d => d.stock_id === s.id && d.stage === 'ganho');
                     const cliente = deal ? deal.client : '<span style="color:#9ca3af">Desconhecido</span>';
                     const dataVenda = deal && deal.close_date ? new Date(deal.close_date).toLocaleDateString('pt-BR') : '-';
-
-                    htmlSold += `<tr>
-                        <td>${dataVenda}</td>
-                        <td><b>${s.model}</b></td>
-                        <td>${s.mono || '-'}</td>
-                        <td>${s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-                        <td>${cliente}</td>
-                        <td>${restoreBtn}</td>
-                    </tr>`;
+                    htmlSold += `<tr><td>${dataVenda}</td><td><b>${s.model}</b></td><td>${s.mono || '-'}</td><td>${s.cost.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td><td>${cliente}</td><td>${restoreBtn}</td></tr>`;
                 }
             }
         });
@@ -599,43 +505,33 @@ const APP = {
         if(tbodySold) tbodySold.innerHTML = htmlSold || '<tr><td colspan="6" style="text-align:center; padding:15px; color:#9ca3af;">Nenhum item vendido ou arquivado.</td></tr>';
     },
 
-    /**
-     * MÓDULO: NEGÓCIOS (FUNIL)
-     */
     prepareDeal: (preselectedStockId = null) => {
         document.getElementById('deal-id').value = '';
         const sel = document.getElementById('deal-stock'); sel.innerHTML = '<option value="">Sem Máquina</option>';
         APP.data.stock.filter(s => s.status !== 'Vendido').forEach(s => { const selected = preselectedStockId === s.id ? 'selected' : ''; sel.innerHTML += `<option value="${s.id}" ${selected}>${s.model} - R$ ${s.cost}</option>`; });
-        
         const dl = document.getElementById('list-clients');
         dl.innerHTML = APP.data.clients.map(c => `<option value="${c.name}">`).join('');
-        
         APP.modal('modal-deal');
     },
 
     saveDeal: async (e) => {
         e.preventDefault();
         const id = document.getElementById('deal-id').value;
-        const stockId = document.getElementById('deal-stock').value || null; // Ensure null if empty
-        
+        const stockId = document.getElementById('deal-stock').value || null; 
         const dealData = {
             client: document.getElementById('deal-client').value,
             source: document.getElementById('deal-source').value,
             value: APP.parseMoney(document.getElementById('deal-value').value),
-            stock_id: stockId, // Note: Snake_case for DB
+            stock_id: stockId,
             next_date: document.getElementById('deal-next-date').value || null,
             next_desc: document.getElementById('deal-next-desc').value,
-            owner: APP.user.name // Ensure owner is saved
+            owner: APP.user.name 
         };
 
         if (id) {
-            // Update
             dealData.id = id;
-            
-            // Check logic for stock change
             const oldDeal = APP.data.deals.find(d => d.id === id);
             if(oldDeal && oldDeal.stage === 'ganho' && dealData.stock_id !== oldDeal.stock_id) {
-                // If changing stock on a won deal, update costs
                 if(dealData.stock_id) {
                     const s = APP.data.stock.find(x => x.id === dealData.stock_id);
                     if(s) dealData.original_cost = s.cost;
@@ -643,8 +539,6 @@ const APP = {
                     dealData.original_cost = 0;
                 }
             }
-
-            // History logic
             if(!oldDeal.history) oldDeal.history = [];
             let newHist = oldDeal.history;
             if (dealData.next_date && (dealData.next_date !== oldDeal.next_date || dealData.next_desc !== oldDeal.next_desc)) {
@@ -652,44 +546,36 @@ const APP = {
                 newHist.push({date: Date.now(), user: APP.user.name, action: 'Agenda', detail: `Nova ação: ${dateBr} - ${dealData.next_desc}`});
             }
             dealData.history = newHist;
-
             const { data, error } = await supabaseClient.from('deals').update(dealData).eq('id', id).select();
             if(error) return alert("Erro: " + error.message);
             APP.refreshLocal('deals', data[0]);
-
         } else {
-            // Insert
             dealData.stage = 'prospeccao';
             dealData.history = [{date: Date.now(), user: APP.user.name, action: 'Criação', detail: 'Oportunidade criada'}];
-            
             if(dealData.next_date) {
                 const dateBr = dealData.next_date.split('-').reverse().join('/');
                 dealData.history.push({date: Date.now(), user: APP.user.name, action: 'Agenda', detail: `Inicial: ${dateBr} - ${dealData.next_desc}`});
             }
-
             const { data, error } = await supabaseClient.from('deals').insert(dealData).select();
             if(error) return alert("Erro: " + error.message);
             APP.refreshLocal('deals', data[0]);
         }
         
-        // Update Stock Status
         if(stockId) {
             const s = APP.data.stock.find(x => x.id === stockId);
             if(s && s.status !== 'Reservado' && s.status !== 'Vendido') {
                 const newHist = APP.addLog(s, 'Reservado', `Vinculado ao cliente ${dealData.client}`);
                 await supabaseClient.from('stock').update({status: 'Reservado', history: newHist}).eq('id', stockId);
-                s.status = 'Reservado'; // Local update
+                s.status = 'Reservado'; 
             }
         }
-
-        APP.closeModals(); 
-        APP.nav('funil');
+        APP.closeModals(); APP.nav('funil');
     },
 
     editDeal: (id) => { 
         const d = APP.data.deals.find(x => x.id === id); 
         if (!d) return; 
-        APP.prepareDeal(d.stock_id); // Note: stock_id
+        APP.prepareDeal(d.stock_id); 
         document.getElementById('deal-id').value = d.id; 
         document.getElementById('deal-client').value = d.client; 
         document.getElementById('deal-source').value = d.source || 'Loja/Passante';
@@ -703,10 +589,8 @@ const APP = {
     deleteDeal: async (id) => {
         if(confirm('Excluir oportunidade?')) {
             const deal = APP.data.deals.find(d => d.id === id);
-            
             const { error } = await supabaseClient.from('deals').delete().eq('id', id);
             if(error) return alert("Erro: " + error.message);
-
             if(deal && deal.stock_id) {
                 const s = APP.data.stock.find(x => x.id === deal.stock_id);
                 if(s && s.status === 'Reservado') {
@@ -715,7 +599,6 @@ const APP = {
                     s.status = 'Disponível';
                 }
             }
-            
             APP.refreshLocal('deals', {id}, true);
             APP.toast('Oportunidade excluída!');
         }
@@ -726,9 +609,7 @@ const APP = {
         if (!deal) return;
         const oldStage = deal.stage;
         let motivoPerda = '';
-        
         let updates = { stage: stage };
-
         if (stage === 'perdido') {
             motivoPerda = prompt("Motivo da perda?");
             if (motivoPerda === null) { APP.renderKanban(); return; }
@@ -736,7 +617,6 @@ const APP = {
             updates.next_desc = `⛔ PERDA: ${motivoPerda}`;
             updates.next_date = new Date().toISOString().split('T')[0];
         }
-
         if (stage === 'ganho' && oldStage !== 'ganho') {
             updates.close_date = new Date().toISOString();
             if (deal.stock_id) {
@@ -746,37 +626,18 @@ const APP = {
                 updates.original_cost = 0;
             }
         }
-
-        // History
         let newHistory = APP.addLog(deal, 'Movimentação', `De ${oldStage.toUpperCase()} para ${stage.toUpperCase()}` + (motivoPerda ? ` (${motivoPerda})` : ''));
         updates.history = newHistory;
-
-        // DB Update
         const { error } = await supabaseClient.from('deals').update(updates).eq('id', id);
         if(error) return alert("Erro: " + error.message);
-
-        // Update Local
         Object.assign(deal, updates);
-
-        // Stock Effects
         if (deal.stock_id) {
             const s = APP.data.stock.find(x => x.id === deal.stock_id);
             if (s) {
-                let sUpdates = {};
-                let sAction = '';
-                if (stage === 'ganho') {
-                    sUpdates.status = 'Vendido';
-                    sAction = 'Venda';
-                } else if (stage === 'perdido') {
-                    sUpdates.status = 'Disponível';
-                    sAction = 'Perda';
-                } else {
-                    if(s.status !== 'Reservado') {
-                        sUpdates.status = 'Reservado';
-                        sAction = 'Reserva';
-                    }
-                }
-
+                let sUpdates = {}; let sAction = '';
+                if (stage === 'ganho') { sUpdates.status = 'Vendido'; sAction = 'Venda'; } 
+                else if (stage === 'perdido') { sUpdates.status = 'Disponível'; sAction = 'Perda'; } 
+                else { if(s.status !== 'Reservado') { sUpdates.status = 'Reservado'; sAction = 'Reserva'; } }
                 if(sAction) {
                     s.status = sUpdates.status;
                     sUpdates.history = APP.addLog(s, sAction, `Negócio: ${deal.client}`);
@@ -791,30 +652,17 @@ const APP = {
         const cols = [{id:'prospeccao', l:'Prospecção', c:'#3b82f6'},{id:'analise_credito', l:'Análise Crédito', c:'#0ea5e9'},{id:'documentacao', l:'Documentação', c:'#eab308'},{id:'contrato', l:'Contrato', c:'#f97316'},{id:'af', l:'A.F.', c:'#8b5cf6'},{id:'ganho', l:'Ganho', c:'#10b981'},{id:'perdido', l:'Perdido', c:'#374151'}];
         const container = document.getElementById('kanban-board');
         container.innerHTML = '';
-        
         let deals = APP.data.deals;
-        if (APP.user.role === 'gestor') { 
-            const f = document.getElementById('filter-user').value; 
-            if (f !== 'all') deals = deals.filter(d => d.owner === f); 
-        } else { 
-            deals = deals.filter(d => d.owner === APP.user.name); 
-        }
-
+        if (APP.user.role === 'gestor') { const f = document.getElementById('filter-user').value; if (f !== 'all') deals = deals.filter(d => d.owner === f); } 
+        else { deals = deals.filter(d => d.owner === APP.user.name); }
         cols.forEach(c => {
             const items = deals.filter(d => d.stage === c.id);
             const totalCol = items.reduce((acc, curr) => acc + curr.value, 0);
-
             const div = document.createElement('div'); div.className = 'kanban-col';
             div.ondragover = e => { e.preventDefault(); div.classList.add('drag-over'); };
             div.ondragleave = e => div.classList.remove('drag-over');
             div.ondrop = e => { e.preventDefault(); div.classList.remove('drag-over'); if(APP.dragId) APP.updateStage(APP.dragId, c.id); };
-            
-            let html = `<div class="kanban-header" style="background:${c.c}">
-                            <div>${c.l} (${items.length})</div>
-                            <div class="kanban-header-total">${totalCol.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div>
-                        </div>
-                        <div class="kanban-list">`;
-            
+            let html = `<div class="kanban-header" style="background:${c.c}"><div>${c.l} (${items.length})</div><div class="kanban-header-total">${totalCol.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div><div class="kanban-list">`;
             items.forEach(d => {
                 let actionHtml = '';
                 if(d.stage === 'perdido' && d.next_desc && d.next_desc.includes('PERDA')) { actionHtml = `<div class="card-action" style="color:#991b1b; font-weight:800; background:#fee2e2;">${d.next_desc}</div>`; }
@@ -830,135 +678,69 @@ const APP = {
         });
     },
 
-    /**
-     * MÓDULO: AGENDA
-     */
     renderAgenda: () => {
         const container = document.getElementById('agenda-content');
         if(!container) return;
-
         let deals = APP.data.deals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido' && d.next_date);
-        if (APP.user.role !== 'gestor') { 
-            deals = deals.filter(d => d.owner === APP.user.name); 
-        }
-
-        if(deals.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af;">Nenhuma tarefa agendada.</div>';
-            return;
-        }
-
+        if (APP.user.role !== 'gestor') { deals = deals.filter(d => d.owner === APP.user.name); }
+        if(deals.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af;">Nenhuma tarefa agendada.</div>'; return; }
         const today = new Date().toISOString().split('T')[0];
-        const delayed = [];
-        const todayList = [];
-        const future = [];
-
+        const delayed = []; const todayList = []; const future = [];
         deals.sort((a,b) => a.next_date.localeCompare(b.next_date));
-
         deals.forEach(d => {
-            if (d.next_date < today) delayed.push(d);
-            else if (d.next_date === today) todayList.push(d);
-            else future.push(d);
+            if (d.next_date < today) delayed.push(d); else if (d.next_date === today) todayList.push(d); else future.push(d);
         });
-
         const buildList = (title, list, className) => {
             if(list.length === 0) return '';
             let html = `<div class="agenda-group"><h4>${title} (${list.length})</h4>`;
             list.forEach(d => {
                 const dateBr = d.next_date.split('-').reverse().join('/');
-                html += `
-                    <div class="agenda-item ${className}" onclick="APP.editDeal('${d.id}')" style="cursor:pointer">
-                        <div class="agenda-date">${dateBr}</div>
-                        <div class="agenda-info">
-                            <div class="agenda-client">${d.client}</div>
-                            <div class="agenda-desc">${d.next_desc || 'Sem descrição'}</div>
-                        </div>
-                        <div style="font-size:10px; font-weight:700; background:#f3f4f6; padding:2px 5px; border-radius:3px; text-transform:uppercase;">${d.owner}</div>
-                    </div>
-                `;
+                html += `<div class="agenda-item ${className}" onclick="APP.editDeal('${d.id}')" style="cursor:pointer"><div class="agenda-date">${dateBr}</div><div class="agenda-info"><div class="agenda-client">${d.client}</div><div class="agenda-desc">${d.next_desc || 'Sem descrição'}</div></div><div style="font-size:10px; font-weight:700; background:#f3f4f6; padding:2px 5px; border-radius:3px; text-transform:uppercase;">${d.owner}</div></div>`;
             });
-            html += '</div>';
-            return html;
+            html += '</div>'; return html;
         };
-
-        container.innerHTML = 
-            buildList('⚠ Atrasadas', delayed, 'delayed') +
-            buildList('📅 Hoje', todayList, 'today') +
-            buildList('🚀 Próximas', future, 'future');
+        container.innerHTML = buildList('⚠ Atrasadas', delayed, 'delayed') + buildList('📅 Hoje', todayList, 'today') + buildList('🚀 Próximas', future, 'future');
     },
 
-    /**
-     * MÓDULO: RELATÓRIOS E KPIs
-     */
     renderKPIs: () => {
         const isGestor = APP.user.role === 'gestor';
         const scopeDeals = isGestor ? APP.data.deals : APP.data.deals.filter(d => d.owner === APP.user.name);
-
         const wonDeals = scopeDeals.filter(d => d.stage === 'ganho');
         const totalRevenue = wonDeals.reduce((a,b) => a+b.value, 0);
         document.getElementById('lbl-faturamento').innerText = isGestor ? "Faturamento (Total)" : "Meu Faturamento";
         document.getElementById('kpi-total').innerText = totalRevenue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-        
         let totalMargin = 0;
         wonDeals.forEach(d => {
             let cost = 0;
-            if (d.original_cost !== undefined) {
-                cost = d.original_cost;
-            } else if (d.stock_id) {
+            if (d.original_cost !== undefined) { cost = d.original_cost; } else if (d.stock_id) {
                 const stockItem = APP.data.stock.find(s => s.id === d.stock_id);
-                if (stockItem) {
-                    cost = stockItem.cost;
-                }
+                if (stockItem) { cost = stockItem.cost; }
             }
             totalMargin += (d.value - cost);
         });
-        
-        let marginPct = 0;
-        if (totalRevenue > 0) {
-            marginPct = (totalMargin / totalRevenue) * 100;
-        }
+        let marginPct = 0; if (totalRevenue > 0) { marginPct = (totalMargin / totalRevenue) * 100; }
         const pctColor = marginPct >= 0 ? '#10b981' : '#ef4444';
-
-        document.getElementById('kpi-margin').innerHTML = `
-            ${totalMargin.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})} 
-            <span style="font-size:14px; color:${pctColor}; margin-left:5px;">(${marginPct.toFixed(1)}%)</span>
-        `;
-
+        document.getElementById('kpi-margin').innerHTML = `${totalMargin.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})} <span style="font-size:14px; color:${pctColor}; margin-left:5px;">(${marginPct.toFixed(1)}%)</span>`;
         const openDealsList = scopeDeals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido');
         const pipelineValue = openDealsList.reduce((a,b) => a+b.value, 0);
         document.getElementById('kpi-pipeline').innerText = pipelineValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-
         const gridContainer = document.getElementById('dash-inventory-grid');
-        
-        if (!isGestor) {
-            gridContainer.innerHTML = '';
-            return;
-        }
-
+        if (!isGestor) { gridContainer.innerHTML = ''; return; }
         const blockedStock = APP.data.stock.filter(s => s.status === 'Reservado');
         const blockedValue = blockedStock.reduce((a, b) => a + b.cost, 0);
         const availableStock = APP.data.stock.filter(s => s.status === 'Disponível');
-        
-        const types = {};
-        let totalStockValue = 0;
-        let criticalValue = 0;
-
+        const types = {}; let totalStockValue = 0; let criticalValue = 0;
         availableStock.forEach(s => {
-            if(!types[s.type]) types[s.type] = 0;
-            types[s.type] += s.cost;
-            totalStockValue += s.cost;
-            // Diff date from DB (date_entry)
+            if(!types[s.type]) types[s.type] = 0; types[s.type] += s.cost; totalStockValue += s.cost;
             const entryDate = s.date_entry ? new Date(s.date_entry).getTime() : Date.now();
             if(APP.daysDiff(entryDate) > 365) criticalValue += s.cost;
         });
-
-        let gridHtml = '';
-        gridHtml += `<div class="inv-card"><div class="inv-label">💰 Estoque Total</div><div class="inv-value">${totalStockValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
+        let gridHtml = `<div class="inv-card"><div class="inv-label">💰 Estoque Total</div><div class="inv-value">${totalStockValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
         for (const [type, val] of Object.entries(types)) {
             gridHtml += `<div class="inv-card"><div class="inv-label">🚜 ${type}</div><div class="inv-value" style="font-size:16px;">${val.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
         }
         gridHtml += `<div class="inv-card blocked"><div class="inv-label">🔒 Reservado/Em Disputa</div><div class="inv-value">${blockedValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
         gridHtml += `<div class="inv-card critical"><div class="inv-label">🚨 Capital Crítico (>365d)</div><div class="inv-value">${criticalValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
-
         gridContainer.innerHTML = gridHtml;
     },
 
@@ -967,60 +749,27 @@ const APP = {
         const endStr = document.getElementById('rep-end').value;
         const sourceFilter = document.getElementById('rep-source').value;
         const sellerFilter = document.getElementById('rep-seller').value;
-
         if(!startStr || !endStr) return;
         const startDate = new Date(startStr).getTime();
         const endDate = new Date(endStr).getTime() + 86400000;
-
         const tbody = document.querySelector('#table-reports tbody');
-        let html = '';
-        let totalVal = 0;
-        let count = 0;
-
+        let html = ''; let totalVal = 0; let count = 0;
         APP.data.deals.forEach(d => {
             const dealDateStr = d.close_date || (d.history && d.history[0] ? d.history[0].date : 0);
             const dealDate = new Date(dealDateStr).getTime();
-            
             if (d.stage === 'ganho' && dealDate >= startDate && dealDate < endDate) {
                 if (sourceFilter !== 'all' && d.source !== sourceFilter) return;
                 if (APP.user.role !== 'gestor' && d.owner !== APP.user.name) return;
                 if (APP.user.role === 'gestor' && sellerFilter !== 'all' && d.owner !== sellerFilter) return;
-
-                totalVal += d.value;
-                count++;
-                let prodName = 'Consórcio/Serviço';
-                let cost = 0;
-
-                if(d.stock_id) {
-                    const s = APP.data.stock.find(x => x.id === d.stock_id);
-                    if(s) prodName = s.model;
-                }
-                
-                if (d.original_cost !== undefined) {
-                    cost = d.original_cost;
-                } else if (d.stock_id) {
-                    const stockItem = APP.data.stock.find(s => s.id === d.stock_id);
-                    if (stockItem) cost = stockItem.cost;
-                }
-
-                const marginVal = d.value - cost;
-                const marginPct = d.value > 0 ? ((marginVal / d.value) * 100).toFixed(1) + '%' : '0%';
-                const marginColor = marginVal >= 0 ? '#10b981' : '#ef4444';
-
+                totalVal += d.value; count++;
+                let prodName = 'Consórcio/Serviço'; let cost = 0;
+                if(d.stock_id) { const s = APP.data.stock.find(x => x.id === d.stock_id); if(s) prodName = s.model; }
+                if (d.original_cost !== undefined) { cost = d.original_cost; } else if (d.stock_id) { const stockItem = APP.data.stock.find(s => s.id === d.stock_id); if (stockItem) cost = stockItem.cost; }
+                const marginVal = d.value - cost; const marginPct = d.value > 0 ? ((marginVal / d.value) * 100).toFixed(1) + '%' : '0%'; const marginColor = marginVal >= 0 ? '#10b981' : '#ef4444';
                 const dateBr = new Date(dealDate).toLocaleDateString('pt-BR');
-                
-                html += `<tr>
-                    <td>${dateBr}</td>
-                    <td><b>${d.client}</b></td>
-                    <td>${d.source || '-'}</td>
-                    <td>${d.owner}</td>
-                    <td>${prodName}</td>
-                    <td>${d.value.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
-                    <td style="color:${marginColor}; font-weight:bold;">${marginVal.toLocaleString('pt-BR', {minimumFractionDigits: 2})} <small>(${marginPct})</small></td>
-                </tr>`;
+                html += `<tr><td>${dateBr}</td><td><b>${d.client}</b></td><td>${d.source || '-'}</td><td>${d.owner}</td><td>${prodName}</td><td>${d.value.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td><td style="color:${marginColor}; font-weight:bold;">${marginVal.toLocaleString('pt-BR', {minimumFractionDigits: 2})} <small>(${marginPct})</small></td></tr>`;
             }
         });
-
         if(count === 0) html = '<tr><td colspan="7" style="text-align:center; padding:20px;">Nenhuma venda encontrada com estes filtros.</td></tr>';
         tbody.innerHTML = html;
         document.getElementById('rep-total-val').innerText = totalVal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
@@ -1050,37 +799,12 @@ const APP = {
         APP.modal('modal-history');
     },
 
-    /**
-     * UTILITÁRIOS
-     */
-    parseMoney: (v) => {
-        if (typeof v === 'number') return v;
-        if (!v) return 0;
-        return parseFloat(v.toString().replace(/[R$€\s]/g, '').replace(/\./g, '').replace(',', '.').trim()) || 0;
-    },
-    parseDateBR: (dateStr) => {
-        if (!dateStr) return Date.now();
-        const parts = dateStr.trim().split('/');
-        if (parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]).getTime();
-        return Date.now();
-    },
+    parseMoney: (v) => { if (typeof v === 'number') return v; if (!v) return 0; return parseFloat(v.toString().replace(/[R$€\s]/g, '').replace(/\./g, '').replace(',', '.').trim()) || 0; },
+    parseDateBR: (dateStr) => { if (!dateStr) return Date.now(); const parts = dateStr.trim().split('/'); if (parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]).getTime(); return Date.now(); },
     daysDiff: (ts) => Math.floor((Date.now() - ts) / 86400000),
-    maskMoney: (i) => {
-        let v = i.value.replace(/\D/g, '');
-        v = (v/100).toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
-        i.value = v;
-    },
-    inputPhone: (i) => {
-        let v = i.value.replace(/\D/g,"");
-        v = v.replace(/^(\d{2})(\d)/g,"($1) $2");
-        v = v.replace(/(\d)(\d{4})$/,"$1-$2");
-        i.value = v;
-    },
-    openWhatsapp: (phone) => {
-        if(!phone) return alert('Sem telefone cadastrado');
-        const num = phone.replace(/\D/g, '');
-        window.open(`https://wa.me/55${num}`, '_blank');
-    },
+    maskMoney: (i) => { let v = i.value.replace(/\D/g, ''); v = (v/100).toFixed(2).replace(".", ",").replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1."); i.value = v; },
+    inputPhone: (i) => { let v = i.value.replace(/\D/g,""); v = v.replace(/^(\d{2})(\d)/g,"($1) $2"); v = v.replace(/(\d)(\d{4})$/,"$1-$2"); i.value = v; },
+    openWhatsapp: (phone) => { if(!phone) return alert('Sem telefone cadastrado'); const num = phone.replace(/\D/g, ''); window.open(`https://wa.me/55${num}`, '_blank'); },
     exportData: () => { 
         const wb = XLSX.utils.book_new(); 
         XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(APP.data.stock), "Estoque"); 
@@ -1091,5 +815,4 @@ const APP = {
     renderAll: () => { APP.renderStock(); APP.renderKanban(); APP.renderUsers(); APP.renderKPIs(); APP.renderClients(); APP.renderAgenda(); },
 };
 
-// INICIA O APP
 document.addEventListener('DOMContentLoaded', APP.init);
