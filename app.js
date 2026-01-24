@@ -1,5 +1,5 @@
 /**
- * YATTA CRM - v3.9.16 (CLOUD - PERMISSÕES CORRIGIDAS)
+ * YATTA CRM - v3.9.17 (CLOUD - CLIENTES PLUS)
  * Conectado ao Supabase (PostgreSQL)
  */
 
@@ -172,7 +172,6 @@ const APP = {
         const isGestor = APP.user.role === 'gestor';
         const gestorBtns = document.querySelectorAll('.gestor-ctrl');
         
-        // CORREÇÃO VISUAL: Força a atualização do display dos botões de gestor
         gestorBtns.forEach(btn => {
             if (isGestor) {
                 btn.style.setProperty('display', 'inline-flex', 'important');
@@ -211,7 +210,6 @@ const APP = {
     saveUser: async (e) => {
         e.preventDefault();
         
-        // SEGURANÇA: Apenas gestor pode criar usuário
         if (APP.user.role !== 'gestor') {
             return alert("Acesso negado: Apenas gestores podem adicionar membros.");
         }
@@ -238,7 +236,6 @@ const APP = {
     },
 
     renderUsers: () => {
-        // CORREÇÃO: Botão excluir só aparece para gestores
         const isGestor = APP.user && APP.user.role === 'gestor';
 
         document.querySelector('#table-users tbody').innerHTML = APP.data.users.map(u => {
@@ -246,7 +243,6 @@ const APP = {
             return `<tr><td>${u.name}</td><td>${u.role}</td><td>${deleteBtn}</td></tr>`;
         }).join('');
         
-        // Performance
         const tbPerf = document.querySelector('#table-performance tbody');
         let ranking = [];
 
@@ -279,7 +275,6 @@ const APP = {
     },
 
     deleteUser: async (id) => {
-        // SEGURANÇA: Apenas gestor pode excluir
         if (APP.user.role !== 'gestor') {
             return alert("Acesso negado: Apenas gestores podem remover membros.");
         }
@@ -287,7 +282,6 @@ const APP = {
         if(confirm('Excluir usuário?')) {
             const { error } = await supabaseClient.from('users').delete().eq('id', id);
             if(error) return alert("Erro: " + error.message);
-            // Atualiza local
             APP.data.users = APP.data.users.filter(u => u.id !== id);
             APP.renderUsers();
             APP.renderUserSelect();
@@ -301,7 +295,9 @@ const APP = {
             name: document.getElementById('cli-name').value,
             phone: document.getElementById('cli-phone').value,
             email: document.getElementById('cli-email').value,
-            obs: document.getElementById('cli-obs').value
+            obs: document.getElementById('cli-obs').value,
+            cpf_cnpj: document.getElementById('cli-cpf').value, // NOVO
+            doc_link: document.getElementById('cli-docs').value // NOVO
         };
         if (id) cliData.id = id;
         const { data, error } = await supabaseClient.from('clients').upsert(cliData).select();
@@ -326,6 +322,9 @@ const APP = {
         document.getElementById('cli-phone').value = c.phone;
         document.getElementById('cli-email').value = c.email;
         document.getElementById('cli-obs').value = c.obs;
+        // NOVOS CAMPOS
+        document.getElementById('cli-cpf').value = c.cpf_cnpj || '';
+        document.getElementById('cli-docs').value = c.doc_link || '';
         APP.modal('modal-client');
     },
 
@@ -334,15 +333,44 @@ const APP = {
         const tbody = document.querySelector('#table-clients tbody');
         if(!tbody) return;
         const filtered = APP.data.clients.filter(c => c.name.toLowerCase().includes(term));
-        tbody.innerHTML = filtered.map(c => `
+        
+        tbody.innerHTML = filtered.map(c => {
+            // CÁLCULO TOTAL GASTO (DEALS)
+            const totalSpent = APP.data.deals
+                .filter(d => d.client === c.name && d.stage === 'ganho')
+                .reduce((acc, curr) => acc + curr.value, 0);
+
+            // FORMATAÇÃO DOCS
+            let docHtml = '-';
+            if (c.doc_link) {
+                docHtml = `<a href="${c.doc_link}" target="_blank" class="btn btn-small btn-dark" title="Abrir Documentos">📂 Abrir</a>`;
+            }
+
+            return `
             <tr>
-                <td><b>${c.name}</b></td>
-                <td style="display:flex; gap:5px; align-items:center;">${c.phone} ${c.phone ? `<a href="#" onclick="APP.openWhatsapp('${c.phone}')" class="btn-whatsapp">Zap</a>` : ''}</td>
-                <td>${c.email || '-'}</td>
+                <td>
+                    <b>${c.name}</b><br>
+                    <small style="color:#6b7280">${c.cpf_cnpj || 'Sem CPF/CNPJ'}</small>
+                </td>
+                <td>
+                    <div style="font-size:12px">${c.phone || '-'}</div>
+                    ${c.phone ? `<a href="#" onclick="APP.openWhatsapp('${c.phone}')" class="btn-whatsapp">Zap</a>` : ''}
+                    <div style="font-size:10px; color:#6b7280; margin-top:2px;">${c.email || ''}</div>
+                </td>
                 <td>${c.obs || '-'}</td>
-                <td><button onclick="APP.editClient('${c.id}')" class="btn btn-small btn-main">✏️</button> <button onclick="APP.deleteClient('${c.id}')" class="btn btn-small btn-danger">×</button></td>
+                <td>
+                    <span style="color:#059669; font-weight:800;">
+                        ${totalSpent.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}
+                    </span>
+                </td>
+                <td>${docHtml}</td>
+                <td>
+                    <button onclick="APP.editClient('${c.id}')" class="btn btn-small btn-main">✏️</button>
+                    <button onclick="APP.deleteClient('${c.id}')" class="btn btn-small btn-danger">×</button>
+                </td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
     },
 
     importStock: (e) => {
