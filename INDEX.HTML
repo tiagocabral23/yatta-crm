@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#111827">
     <!-- NOME ALTERADO AQUI -->
-    <title>TRAIL v3.9.17 | Clientes Plus</title>
+    <title>TRAIL v3.9.18 | Perfil Assistente</title>
     
     <!-- Bibliotecas Externas (Excel) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -47,7 +47,7 @@
         <div class="sidebar-footer">
             <div id="user-info" style="color: #fbbf24; font-weight: 800; margin-bottom: 5px;"></div>
             <button onclick="APP.logout()" style="background:none; border:1px solid #374151; color:#9ca3af; padding:4px; width:100%; cursor:pointer;">SAIR</button>
-            <div style="margin-top:15px; font-size:9px; opacity:0.5;">v3.9.17 (Trail Cloud)</div>
+            <div style="margin-top:15px; font-size:9px; opacity:0.5;">v3.9.18 (Assistente)</div>
         </div>
     </aside>
 
@@ -207,7 +207,8 @@
 
             <!-- ABA EQUIPA -->
             <section id="tab-equipe" class="tab-content">
-                <button onclick="APP.modal('modal-user')" class="btn btn-main gestor-ctrl" style="margin-bottom:15px;">+ Novo Membro</button>
+                <!-- Mudado para admin-only para esconder de assistentes -->
+                <button onclick="APP.modal('modal-user')" class="btn btn-main admin-only" style="margin-bottom:15px;">+ Novo Membro</button>
                 <div class="data-card">
                     <table id="table-users">
                         <thead><tr><th>Nome</th><th>Função</th><th>Ação</th></tr></thead>
@@ -306,7 +307,13 @@
             <h3>Novo Usuário</h3>
             <form onsubmit="APP.saveUser(event)">
                 <div class="form-item"><label>Nome</label><input id="usr-name" required></div>
-                <div class="form-item"><label>Função</label><select id="usr-role"><option value="vendedor">Vendedor</option><option value="gestor">Gestor</option></select></div>
+                <div class="form-item"><label>Função</label>
+                    <select id="usr-role">
+                        <option value="vendedor">Vendedor</option>
+                        <option value="assistente">Assistente</option>
+                        <option value="gestor">Gestor</option>
+                    </select>
+                </div>
                 <button class="btn btn-main" style="width:100%">Salvar</button>
                 <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
             </form>

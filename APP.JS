@@ -1,5 +1,5 @@
 /**
- * TRAIL - v3.9.17 (CLOUD - CLIENTES PLUS)
+ * TRAIL - v3.9.18 (CLOUD - PERMISSÕES CORRIGIDAS)
  * Conectado ao Supabase (PostgreSQL)
  */
 
@@ -170,10 +170,13 @@ const APP = {
         document.getElementById('user-info').innerText = APP.user.name;
         
         const isGestor = APP.user.role === 'gestor';
+        const isAssistente = APP.user.role === 'assistente';
         const gestorBtns = document.querySelectorAll('.gestor-ctrl');
+        const adminBtns = document.querySelectorAll('.admin-only');
         
+        // Elementos visíveis para Gestor e Assistente (Filtros, Stock)
         gestorBtns.forEach(btn => {
-            if (isGestor) {
+            if (isGestor || isAssistente) {
                 btn.style.setProperty('display', 'inline-flex', 'important');
                 btn.classList.add('show-gestor');
             } else {
@@ -181,11 +184,20 @@ const APP = {
                 btn.classList.remove('show-gestor');
             }
         });
+
+        // Elementos visíveis APENAS para Gestor (Adicionar Membro)
+        adminBtns.forEach(btn => {
+            if (isGestor) {
+                btn.style.setProperty('display', 'inline-flex', 'important');
+            } else {
+                btn.style.setProperty('display', 'none', 'important');
+            }
+        });
         
         const filter = document.getElementById('filter-user');
         const sellerFilter = document.getElementById('rep-seller'); 
 
-        if(isGestor) {
+        if(isGestor || isAssistente) {
             filter.style.display = 'block';
             filter.innerHTML = '<option value="all">Ver Todos</option>';
             sellerFilter.innerHTML = '<option value="all">Todos</option>'; 
@@ -296,8 +308,8 @@ const APP = {
             phone: document.getElementById('cli-phone').value,
             email: document.getElementById('cli-email').value,
             obs: document.getElementById('cli-obs').value,
-            cpf_cnpj: document.getElementById('cli-cpf').value,
-            doc_link: document.getElementById('cli-docs').value
+            cpf_cnpj: document.getElementById('cli-cpf').value, 
+            doc_link: document.getElementById('cli-docs').value 
         };
         if (id) cliData.id = id;
         const { data, error } = await supabaseClient.from('clients').upsert(cliData).select();
@@ -307,6 +319,10 @@ const APP = {
     },
     
     deleteClient: async (id) => {
+        // SEGURANÇA: Assistente não pode excluir clientes
+        if (APP.user.role !== 'gestor') {
+            return alert("Acesso negado: Apenas gestores podem excluir clientes.");
+        }
         if(confirm('Excluir cliente?')) { 
             const { error } = await supabaseClient.from('clients').delete().eq('id', id);
             if(error) return alert("Erro: " + error.message);
@@ -334,12 +350,10 @@ const APP = {
         const filtered = APP.data.clients.filter(c => c.name.toLowerCase().includes(term));
         
         tbody.innerHTML = filtered.map(c => {
-            // CÁLCULO TOTAL GASTO (DEALS)
             const totalSpent = APP.data.deals
                 .filter(d => d.client === c.name && d.stage === 'ganho')
                 .reduce((acc, curr) => acc + curr.value, 0);
 
-            // FORMATAÇÃO DOCS
             let docHtml = '-';
             if (c.doc_link) {
                 docHtml = `<a href="${c.doc_link}" target="_blank" class="btn btn-small btn-dark" title="Abrir Documentos">📂 Abrir</a>`;
@@ -417,7 +431,11 @@ const APP = {
 
     saveStock: async (e) => {
         e.preventDefault();
-        if(APP.user.role !== 'gestor') return alert('Apenas gestores podem editar estoque.');
+        // Permite gestor E assistente editar stock
+        if (APP.user.role !== 'gestor' && APP.user.role !== 'assistente') {
+            return alert('Acesso negado: Apenas gestores e assistentes podem editar estoque.');
+        }
+
         const id = document.getElementById('stk-item-id-unique').value; 
         const itemData = {
             type: document.getElementById('stk-type').value,
@@ -496,6 +514,7 @@ const APP = {
         const tbodySold = document.querySelector('#table-stock-sold tbody');
         let htmlBuffer = ''; let htmlSold = '';
         const isGestor = APP.user.role === 'gestor';
+        const isAssistente = APP.user.role === 'assistente';
 
         APP.data.stock.forEach(s => {
             if (s.model.toLowerCase().includes(term) || (s.mono && s.mono.toLowerCase().includes(term))) {
@@ -514,6 +533,9 @@ const APP = {
                     let actionHtml = '';
                     if(isGestor) {
                         actionHtml = `<button onclick="APP.editStock('${s.id}')" title="Editar" class="btn btn-small btn-main">✏️</button> <button onclick="APP.viewHistory('${s.id}', 'stock')" title="Histórico" class="btn btn-small btn-dark">📜</button> <button onclick="APP.deleteStock('${s.id}')" title="Excluir" class="btn btn-small btn-danger">×</button>`;
+                    } else if (isAssistente) {
+                        // Assistente: Edita e Vê, mas não exclui
+                        actionHtml = `<button onclick="APP.editStock('${s.id}')" title="Editar" class="btn btn-small btn-main">✏️</button> <button onclick="APP.viewHistory('${s.id}', 'stock')" title="Histórico" class="btn btn-small btn-dark">📜</button>`;
                     } else {
                         actionHtml = `<button onclick="APP.viewHistory('${s.id}', 'stock')" title="Histórico" class="btn btn-small btn-dark">📜 Detalhes</button>`;
                     }
@@ -614,6 +636,10 @@ const APP = {
     },
 
     deleteDeal: async (id) => {
+        if (APP.user.role !== 'gestor') { // SEGURANÇA: Apenas gestor pode excluir negócios
+             return alert('Acesso negado: Apenas gestores podem excluir negócios.');
+        }
+
         if(confirm('Excluir oportunidade?')) {
             const deal = APP.data.deals.find(d => d.id === id);
             const { error } = await supabaseClient.from('deals').delete().eq('id', id);
@@ -680,8 +706,16 @@ const APP = {
         const container = document.getElementById('kanban-board');
         container.innerHTML = '';
         let deals = APP.data.deals;
-        if (APP.user.role === 'gestor') { const f = document.getElementById('filter-user').value; if (f !== 'all') deals = deals.filter(d => d.owner === f); } 
-        else { deals = deals.filter(d => d.owner === APP.user.name); }
+        const isGestor = APP.user.role === 'gestor';
+        const isAssistente = APP.user.role === 'assistente';
+
+        if (isGestor || isAssistente) { 
+            const f = document.getElementById('filter-user').value; 
+            if (f !== 'all') deals = deals.filter(d => d.owner === f); 
+        } else { 
+            deals = deals.filter(d => d.owner === APP.user.name); 
+        }
+        
         cols.forEach(c => {
             const items = deals.filter(d => d.stage === c.id);
             const totalCol = items.reduce((acc, curr) => acc + curr.value, 0);
@@ -699,7 +733,12 @@ const APP = {
                     const dateBr = d.next_date.split('-').reverse().join('/');
                     actionHtml = `<div class="card-action" style="color:${color}">📅 ${dateBr} - ${d.next_desc}</div>`;
                 }
-                html += `<div class="card" draggable="true" onclick="APP.editDeal('${d.id}')" ondragstart="APP.dragId='${d.id}'; this.classList.add('dragging')" ondragend="this.classList.remove('dragging')"><div class="card-tags"><span class="tag">👤 ${d.owner}</span><div class="card-btn-group"><button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button><button class="btn-card-icon btn-card-delete" onclick="event.stopPropagation(); APP.deleteDeal('${d.id}')" title="Excluir">🗑️</button></div></div><div style="font-weight:800; margin-bottom:5px;">${d.client}</div><div style="font-weight:700; color:#374151;">${d.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>${actionHtml}</div>`;
+                
+                // Assistente cannot delete Deals
+                let deleteBtn = `<button class="btn-card-icon btn-card-delete" onclick="event.stopPropagation(); APP.deleteDeal('${d.id}')" title="Excluir">🗑️</button>`;
+                if (isAssistente) deleteBtn = '';
+
+                html += `<div class="card" draggable="true" onclick="APP.editDeal('${d.id}')" ondragstart="APP.dragId='${d.id}'; this.classList.add('dragging')" ondragend="this.classList.remove('dragging')"><div class="card-tags"><span class="tag">👤 ${d.owner}</span><div class="card-btn-group"><button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button>${deleteBtn}</div></div><div style="font-weight:800; margin-bottom:5px;">${d.client}</div><div style="font-weight:700; color:#374151;">${d.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>${actionHtml}</div>`;
             });
             html += '</div>'; div.innerHTML = html; container.appendChild(div);
         });
@@ -709,7 +748,12 @@ const APP = {
         const container = document.getElementById('agenda-content');
         if(!container) return;
         let deals = APP.data.deals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido' && d.next_date);
-        if (APP.user.role !== 'gestor') { deals = deals.filter(d => d.owner === APP.user.name); }
+        
+        const isGestor = APP.user.role === 'gestor';
+        const isAssistente = APP.user.role === 'assistente';
+
+        if (!isGestor && !isAssistente) { deals = deals.filter(d => d.owner === APP.user.name); }
+        
         if(deals.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af;">Nenhuma tarefa agendada.</div>'; return; }
         const today = new Date().toISOString().split('T')[0];
         const delayed = []; const todayList = []; const future = [];
@@ -731,10 +775,14 @@ const APP = {
 
     renderKPIs: () => {
         const isGestor = APP.user.role === 'gestor';
-        const scopeDeals = isGestor ? APP.data.deals : APP.data.deals.filter(d => d.owner === APP.user.name);
+        const isAssistente = APP.user.role === 'assistente';
+        
+        // Assistant sees all deals like manager
+        const scopeDeals = (isGestor || isAssistente) ? APP.data.deals : APP.data.deals.filter(d => d.owner === APP.user.name);
+        
         const wonDeals = scopeDeals.filter(d => d.stage === 'ganho');
         const totalRevenue = wonDeals.reduce((a,b) => a+b.value, 0);
-        document.getElementById('lbl-faturamento').innerText = isGestor ? "Faturamento (Total)" : "Meu Faturamento";
+        document.getElementById('lbl-faturamento').innerText = (isGestor || isAssistente) ? "Faturamento (Total)" : "Meu Faturamento";
         document.getElementById('kpi-total').innerText = totalRevenue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
         let totalMargin = 0;
         wonDeals.forEach(d => {
@@ -752,7 +800,9 @@ const APP = {
         const pipelineValue = openDealsList.reduce((a,b) => a+b.value, 0);
         document.getElementById('kpi-pipeline').innerText = pipelineValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
         const gridContainer = document.getElementById('dash-inventory-grid');
-        if (!isGestor) { gridContainer.innerHTML = ''; return; }
+        
+        if (!isGestor && !isAssistente) { gridContainer.innerHTML = ''; return; }
+        
         const blockedStock = APP.data.stock.filter(s => s.status === 'Reservado');
         const blockedValue = blockedStock.reduce((a, b) => a + b.cost, 0);
         const availableStock = APP.data.stock.filter(s => s.status === 'Disponível');
@@ -781,13 +831,19 @@ const APP = {
         const endDate = new Date(endStr).getTime() + 86400000;
         const tbody = document.querySelector('#table-reports tbody');
         let html = ''; let totalVal = 0; let count = 0;
+        
+        const isGestor = APP.user.role === 'gestor';
+        const isAssistente = APP.user.role === 'assistente';
+
         APP.data.deals.forEach(d => {
             const dealDateStr = d.close_date || (d.history && d.history[0] ? d.history[0].date : 0);
             const dealDate = new Date(dealDateStr).getTime();
             if (d.stage === 'ganho' && dealDate >= startDate && dealDate < endDate) {
                 if (sourceFilter !== 'all' && d.source !== sourceFilter) return;
-                if (APP.user.role !== 'gestor' && d.owner !== APP.user.name) return;
-                if (APP.user.role === 'gestor' && sellerFilter !== 'all' && d.owner !== sellerFilter) return;
+                
+                if (!isGestor && !isAssistente && d.owner !== APP.user.name) return;
+                if ((isGestor || isAssistente) && sellerFilter !== 'all' && d.owner !== sellerFilter) return;
+                
                 totalVal += d.value; count++;
                 let prodName = 'Consórcio/Serviço'; let cost = 0;
                 if(d.stock_id) { const s = APP.data.stock.find(x => x.id === d.stock_id); if(s) prodName = s.model; }
