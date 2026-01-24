@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#111827">
+    <title>TRAIL v3.9.17 | Clientes Plus</title>
+    
+    <!-- Bibliotecas Externas (Excel) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Biblioteca Supabase (BANCO DE DADOS) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Nossos Arquivos Locais -->
+    <link rel="stylesheet" href="style.css">
+    <!-- 'defer' garante que o HTML carregue antes do JS rodar -->
+    <script src="app.js" defer></script>
+</head>
+<body>
+
+    <!-- Overlay de Login -->
+    <div id="user-overlay">
+        <div style="text-align: center;">
+            <h2 style="color: #fff; margin-bottom: 30px;">IDENTIFIQUE-SE</h2>
+            <div id="user-list-grid" style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;"></div>
+        </div>
+    </div>
+
+    <!-- Barra Lateral -->
+    <aside id="sidebar">
+        <div class="brand">
+            <h1>TRAIL</h1>
+            <button class="btn-close-sidebar" onclick="APP.toggleMenu()">×</button>
+        </div>
+        <nav class="nav-menu">
+            <button onclick="APP.nav('dashboard')" id="btn-dashboard" class="nav-item active">📊 Dashboard</button>
+            <button onclick="APP.nav('agenda')" id="btn-agenda" class="nav-item">📅 Agenda</button>
+            <button onclick="APP.nav('funil')" id="btn-funil" class="nav-item">⚡ Funil</button>
+            <button onclick="APP.nav('clientes')" id="btn-clientes" class="nav-item">📇 Clientes</button>
+            <button onclick="APP.nav('estoque')" id="btn-estoque" class="nav-item">🚜 Estoque</button>
+            <button onclick="APP.nav('relatorios')" id="btn-relatorios" class="nav-item">📈 Relatórios</button>
+            <button onclick="APP.nav('equipe')" id="btn-equipe" class="nav-item">👥 Equipe</button>
+        </nav>
+        <div class="sidebar-footer">
+            <div id="user-info" style="color: #fbbf24; font-weight: 800; margin-bottom: 5px;"></div>
+            <button onclick="APP.logout()" style="background:none; border:1px solid #374151; color:#9ca3af; padding:4px; width:100%; cursor:pointer;">SAIR</button>
+            <div style="margin-top:15px; font-size:9px; opacity:0.5;">v3.9.17 (Trail Cloud)</div>
+        </div>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main id="main-content">
+        <header>
+            <div class="header-left">
+                <button class="btn-hamburger" onclick="APP.toggleMenu()">☰</button>
+                <h2 id="page-title">DASHBOARD</h2>
+            </div>
+            <button onclick="APP.exportData()" class="btn btn-dark" style="font-size:10px;">💾 Backup (Excel)</button>
+        </header>
+
+        <div class="viewport">
+            <!-- ABA DASHBOARD -->
+            <section id="tab-dashboard" class="tab-content active">
+                <div class="grid-stats">
+                    <div class="card-stat"><label id="lbl-faturamento">Faturamento (Mês)</label><div id="kpi-total" class="value">R$ 0,00</div></div>
+                    <div class="card-stat"><label>Valor em Carteira</label><div id="kpi-pipeline" class="value" style="color:#8b5cf6">R$ 0,00</div></div>
+                    <div class="card-stat"><label>Margem de Venda Total</label><div id="kpi-margin" class="value">R$ 0,00</div></div>
+                </div>
+                
+                <div id="dash-inventory-grid" class="inventory-panel-grid">
+                    <!-- Inserido via JS apenas para GESTOR -->
+                </div>
+
+                <div class="grid-2-col">
+                    <div class="data-card">
+                        <div class="data-card-header">Performance Equipa</div>
+                        <div class="table-responsive">
+                            <table id="table-performance">
+                                <thead><tr><th>Nome</th><th>Em Aberto</th><th>Ganhos</th><th>% Conv.</th><th>Total</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="data-card">
+                        <div class="data-card-header">🏆 Top Vendedores</div>
+                        <div id="ranking-list" style="padding: 10px;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA AGENDA -->
+            <section id="tab-agenda" class="tab-content">
+                <div class="data-card" style="padding: 15px;">
+                    <div id="agenda-content"></div>
+                </div>
+            </section>
+
+            <!-- ABA CLIENTES -->
+            <section id="tab-clientes" class="tab-content">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="search-client" onkeyup="APP.renderClients()" placeholder="Buscar Cliente..." style="padding: 10px; flex: 1; border-radius: 6px; border: 1px solid #d1d5db;">
+                    <button class="btn btn-main" onclick="APP.modal('modal-client')">+ Novo Cliente</button>
+                </div>
+                <div class="data-card">
+                    <div class="table-responsive">
+                        <table id="table-clients">
+                            <thead><tr><th>Cliente / CPF</th><th>Contato</th><th>Cidade/Obs</th><th>Total Gasto</th><th>Docs</th><th>Ação</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA ESTOQUE -->
+            <section id="tab-estoque" class="tab-content">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="search-stock" onkeyup="APP.renderStock()" placeholder="Buscar..." style="padding: 10px; flex: 1; border-radius: 6px; border: 1px solid #d1d5db;">
+                    <input type="file" id="file-import" style="display:none" onchange="APP.importStock(event)">
+                    <button id="btn-import-stock" class="btn btn-dark gestor-ctrl" onclick="document.getElementById('file-import').click()">📂 Importar CSV</button>
+                    <button id="btn-new-stock" class="btn btn-main gestor-ctrl" onclick="APP.prepareStock()">+ Novo Item</button>
+                </div>
+                
+                <div class="data-card">
+                    <div class="data-card-header">Disponível no Pátio</div>
+                    <div class="table-responsive">
+                        <table id="table-stock">
+                            <thead><tr><th>Tipo</th><th>Modelo</th><th>Chassi</th><th>Custo</th><th>Dias</th><th>Giro</th><th>Status</th><th>Ação</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="data-card" style="margin-top: 30px; border-color: #9ca3af;">
+                    <div class="data-card-header" style="background: #4b5563; color: #fff;">Itens Vendidos / Arquivados</div>
+                    <div class="table-responsive">
+                        <table id="table-stock-sold">
+                            <thead><tr><th>Data Venda</th><th>Modelo</th><th>Chassi</th><th>Custo</th><th>Cliente</th><th>Ação</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA FUNIL -->
+            <section id="tab-funil" class="tab-content">
+                <div style="margin-bottom: 15px; display: flex; justify-content: space-between;">
+                    <h3 style="font-weight:900;">MEU FUNIL</h3>
+                    <div style="display:flex; gap:10px;">
+                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:5px;"><option value="all">Todos</option></select>
+                        <button onclick="APP.prepareDeal()" class="btn btn-main">+ Oportunidade</button>
+                    </div>
+                </div>
+                <div id="kanban-board" class="kanban-board"></div>
+            </section>
+            
+            <!-- ABA RELATÓRIOS -->
+            <section id="tab-relatorios" class="tab-content">
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>Data Início</label>
+                        <input type="date" id="rep-start">
+                    </div>
+                    <div class="filter-group">
+                        <label>Data Fim</label>
+                        <input type="date" id="rep-end">
+                    </div>
+                    <div class="filter-group">
+                        <label>Origem</label>
+                        <select id="rep-source">
+                            <option value="all">Todas</option>
+                            <option value="Loja/Passante">Loja / Passante</option>
+                            <option value="Indicacao">Indicação</option>
+                            <option value="Visita">Visita</option>
+                            <option value="Instagram">Instagram / Facebook</option>
+                            <option value="Google">Google / Site</option>
+                            <option value="Feira">Feira / Evento</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="filter-group gestor-ctrl">
+                        <label>Vendedor</label>
+                        <select id="rep-seller"><option value="all">Todos</option></select>
+                    </div>
+                    <button class="btn btn-main" onclick="APP.renderReports()">Filtrar</button>
+                    <button class="btn btn-dark" onclick="window.print()">🖨️ Imprimir</button>
+                </div>
+
+                <div class="grid-stats">
+                    <div class="card-stat"><label>Total Vendido (Período)</label><div id="rep-total-val" class="value" style="color:#0ea5e9">R$ 0,00</div></div>
+                    <div class="card-stat"><label>Vendas Fechadas</label><div id="rep-total-count" class="value">0</div></div>
+                </div>
+
+                <div class="data-card">
+                    <div class="data-card-header">Detalhamento de Vendas</div>
+                    <div class="table-responsive">
+                        <table id="table-reports">
+                            <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Vendedor</th><th>Produto/Serviço</th><th>Valor</th><th>Margem</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA EQUIPA -->
+            <section id="tab-equipe" class="tab-content">
+                <button onclick="APP.modal('modal-user')" class="btn btn-main gestor-ctrl" style="margin-bottom:15px;">+ Novo Membro</button>
+                <div class="data-card">
+                    <table id="table-users">
+                        <thead><tr><th>Nome</th><th>Função</th><th>Ação</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modais -->
+    <div id="modal-item" class="modal">
+        <div class="modal-box">
+            <h3>Gerenciar Estoque</h3>
+            <form onsubmit="APP.saveStock(event)">
+                <input type="hidden" id="stk-item-id-unique">
+                <div class="form-item"><label>Tipo</label><select id="stk-type"><option>Trator</option><option>Implemento</option><option>Outros</option></select></div>
+                <div class="form-item"><label>Modelo</label><input id="stk-model" required></div>
+                <div class="form-item"><label>Chassi/Série</label><input id="stk-mono"></div>
+                <div class="form-item"><label>Custo (R$)</label><input id="stk-cost" required oninput="APP.maskMoney(this)"></div>
+                <div class="form-item"><label>Data Entrada</label><input id="stk-date-display" disabled placeholder="Automático"></div>
+                <button class="btn btn-main" style="width:100%">Salvar</button>
+                <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CLIENTE -->
+    <div id="modal-client" class="modal">
+        <div class="modal-box">
+            <h3>Novo Cliente</h3>
+            <form onsubmit="APP.saveClient(event)">
+                <input type="hidden" id="cli-id">
+                <div class="form-item"><label>Nome Completo</label><input id="cli-name" required></div>
+                <div class="form-item"><label>CPF / CNPJ</label><input id="cli-cpf" placeholder="000.000.000-00"></div>
+                <div class="form-item"><label>Telefone (WhatsApp)</label><input id="cli-phone" oninput="APP.inputPhone(this)" placeholder="(00) 00000-0000"></div>
+                <div class="form-item"><label>Email</label><input id="cli-email" type="email"></div>
+                <div class="form-item"><label>Cidade / Obs</label><input id="cli-obs"></div>
+                <div class="form-item"><label>Link Documentos (Drive/Nuvem)</label><input id="cli-docs" placeholder="Cole o link do Google Drive/Dropbox aqui"></div>
+                
+                <button class="btn btn-main" style="width:100%">Salvar</button>
+                <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-history" class="modal">
+        <div class="modal-box">
+            <h3 id="hist-title">📜 Histórico</h3>
+            <div id="history-content" style="margin-top:20px; max-height:300px; overflow-y:auto; padding-left:5px;"></div>
+            <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:20px">Fechar</button>
+        </div>
+    </div>
+
+    <div id="modal-deal" class="modal">
+        <div class="modal-box">
+            <h3>Detalhes do Negócio</h3>
+            <form onsubmit="APP.saveDeal(event)">
+                <input type="hidden" id="deal-id">
+                <div class="form-item">
+                    <label>Cliente</label>
+                    <input id="deal-client" list="list-clients" required placeholder="Digite ou selecione...">
+                    <datalist id="list-clients"></datalist>
+                </div>
+                
+                <div class="form-item">
+                    <label>Origem do Lead</label>
+                    <select id="deal-source">
+                        <option value="Loja/Passante">Loja / Passante</option>
+                        <option value="Indicacao">Indicação</option>
+                        <option value="Visita">Visita</option>
+                        <option value="Instagram">Instagram / Facebook</option>
+                        <option value="Google">Google / Site</option>
+                        <option value="Feira">Feira / Evento</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+
+                <div class="form-item"><label>Valor (R$)</label><input id="deal-value" required oninput="APP.maskMoney(this)"></div>
+                <div class="form-item"><label>Tipo</label><select id="deal-type" onchange="APP.toggleStock()"><option value="maquina">Máquina</option><option value="consorcio">Consórcio</option></select></div>
+                <div class="form-item" id="div-stock-select"><label>Vincular Máquina</label><select id="deal-stock"></select></div>
+                
+                <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+                <h4 style="margin-bottom:10px; font-size:12px;">Agendar Próxima Ação</h4>
+                <div class="form-item"><label>Data</label><input type="date" id="deal-next-date"></div>
+                <div class="form-item"><label>Descrição (O que fazer?)</label><input type="text" id="deal-next-desc" placeholder="Ex: Ligar, Visitar..."></div>
+
+                <button class="btn btn-main" style="width:100%">Salvar</button>
+                <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-user" class="modal">
+        <div class="modal-box">
+            <h3>Novo Usuário</h3>
+            <form onsubmit="APP.saveUser(event)">
+                <div class="form-item"><label>Nome</label><input id="usr-name" required></div>
+                <div class="form-item"><label>Função</label><select id="usr-role"><option value="vendedor">Vendedor</option><option value="gestor">Gestor</option></select></div>
+                <button class="btn btn-main" style="width:100%">Salvar</button>
+                <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast">Salvo com sucesso!</div>
+
+</body>
+</html>
