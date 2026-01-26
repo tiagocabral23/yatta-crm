@@ -133,8 +133,8 @@ const APP = {
         if(tab === 'relatorios') APP.renderReports();
         if(tab === 'clientes') APP.renderClients();
         if(tab === 'agenda') APP.renderAgenda();
-        if(tab === 'vendas') APP.renderSalesTable(); // NOVA ABA
-        if(tab === 'dashboard') APP.renderGoals(); // Atualiza metas
+        if(tab === 'vendas') APP.renderSalesTable(); 
+        if(tab === 'dashboard') APP.renderGoals(); 
     },
 
     modal: (id) => document.getElementById(id).classList.add('active'),
@@ -219,7 +219,7 @@ const APP = {
             name: document.getElementById('usr-name').value, 
             role: document.getElementById('usr-role').value,
             password: pwd || null,
-            goal: APP.parseMoney(document.getElementById('usr-goal').value) // Salva a meta
+            goal: APP.parseMoney(document.getElementById('usr-goal').value) 
         };
         
         const { data, error } = await supabaseClient.from('users').insert(userData).select();
@@ -240,7 +240,6 @@ const APP = {
 
         document.querySelector('#table-users tbody').innerHTML = APP.data.users.map(u => {
             const deleteBtn = isGestor ? `<button class="btn btn-small btn-danger" onclick="APP.deleteUser(${u.id})">Excluir</button>` : '';
-            // Mostra a meta formatada na tabela
             const goalDisplay = u.goal ? u.goal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) : '-';
             return `<tr><td>${u.name}</td><td>${u.role}</td><td>${goalDisplay}</td><td>${deleteBtn}</td></tr>`;
         }).join('');
@@ -276,12 +275,10 @@ const APP = {
         `).join('');
     },
 
-    // --- NOVA FUNÇÃO: RENDERIZAR METAS NO DASHBOARD ---
     renderGoals: () => {
         const container = document.getElementById('goals-container');
         if(!container) return;
 
-        // Filtra apenas vendedores para as metas
         const sellers = APP.data.users.filter(u => u.role === 'vendedor' && u.goal > 0);
         
         if (sellers.length === 0) {
@@ -295,19 +292,18 @@ const APP = {
 
         let html = '';
         sellers.forEach(u => {
-            // Calcula vendas deste mês para o usuário
             const currentSales = APP.data.deals
                 .filter(d => {
                     if (d.owner !== u.name || d.stage !== 'ganho') return false;
-                    const dDate = new Date(d.close_date || d.created_at); // Fallback date
+                    const dDate = new Date(d.close_date || d.created_at); 
                     return dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear;
                 })
                 .reduce((acc, curr) => acc + curr.value, 0);
 
-            const pct = Math.min((currentSales / u.goal) * 100, 100); // Max 100% visual
-            let color = '#ef4444'; // Red
-            if (pct > 50) color = '#eab308'; // Yellow
-            if (pct >= 100) color = '#10b981'; // Green
+            const pct = Math.min((currentSales / u.goal) * 100, 100); 
+            let color = '#ef4444'; 
+            if (pct > 50) color = '#eab308'; 
+            if (pct >= 100) color = '#10b981'; 
 
             html += `
                 <div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px;">
@@ -327,32 +323,27 @@ const APP = {
         container.innerHTML = html;
     },
 
-    // --- NOVA FUNÇÃO: TABELA DE VENDAS DETALHADA ---
     renderSalesTable: () => {
         const tbody = document.querySelector('#table-sales-detail tbody');
         if(!tbody) return;
 
         const term = document.getElementById('search-sales') ? document.getElementById('search-sales').value.toLowerCase() : '';
         
-        // Apenas negócios ganhos
         let sales = APP.data.deals.filter(d => d.stage === 'ganho');
 
-        // Filtra se não for gestor/assistente
         const isGestor = APP.user.role === 'gestor';
         const isAssistente = APP.user.role === 'assistente';
         if (!isGestor && !isAssistente) {
             sales = sales.filter(d => d.owner === APP.user.name);
         }
 
-        // Ordena por data (mais recente primeiro)
         sales.sort((a,b) => new Date(b.close_date || 0) - new Date(a.close_date || 0));
 
         let html = '';
         sales.forEach(d => {
             let prodName = 'Consórcio/Serviço';
-            let cost = d.original_cost || 0; // Use saved cost snapshot if available
+            let cost = d.original_cost || 0; 
             
-            // If no snapshot, try to fetch current (fallback)
             if (cost === 0 && d.stock_id) {
                 const s = APP.data.stock.find(x => x.id === d.stock_id);
                 if(s) {
@@ -364,7 +355,6 @@ const APP = {
                  if(s) prodName = s.model;
             }
 
-            // Search filter
             if (term && !d.client.toLowerCase().includes(term) && !prodName.toLowerCase().includes(term)) return;
 
             const margin = d.value - cost;
@@ -403,10 +393,6 @@ const APP = {
         }
     },
 
-    // ... (Mantenha as funções saveClient, deleteClient, editClient, renderClients, importStock, saveStock, prepareStock, restoreStock, deleteStock, editStock, toggleStock, renderStock, prepareDeal, saveDeal, editDeal, deleteDeal, updateStage, renderKanban, renderAgenda, renderKPIs, renderReports, viewHistory, parseMoney, parseDateBR, daysDiff, maskMoney, inputPhone, openWhatsapp, exportData)
-    // Para economizar espaço, assumo que você manterá as funções existentes abaixo.
-    // MAS IMPORTANTE: No final de renderAll(), adicione as novas chamadas:
-    
     saveClient: async (e) => {
         e.preventDefault();
         const id = document.getElementById('cli-id').value;
