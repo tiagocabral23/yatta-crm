@@ -4,23 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#111827">
-    <!-- NOME FORÇADO -->
-    <title>TRAIL CRM v3.9.20 | Versão Final</title>
+    <title>TRAIL SYSTEM v3.9.22 | Metas & Vendas</title>
     
-    <!-- Bibliotecas Externas (Excel) -->
+    <!-- Bibliotecas Externas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <!-- Biblioteca Supabase (BANCO DE DADOS) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Nossos Arquivos Locais (VERSÃO 20 PARA FORÇAR ATUALIZAÇÃO) -->
-    <link rel="stylesheet" href="style.css?v=3.9.20">
-    <!-- 'defer' garante que o HTML carregue antes do JS rodar -->
-    <script src="app.js?v=3.9.20" defer></script>
+    <link rel="stylesheet" href="style.css?v=3.9.22">
+    <script src="app.js?v=3.9.22" defer></script>
 </head>
 <body>
 
-    <!-- Overlay de Login -->
     <div id="user-overlay">
         <div style="text-align: center;">
             <h2 style="color: #fff; margin-bottom: 30px;">IDENTIFIQUE-SE</h2>
@@ -28,15 +22,14 @@
         </div>
     </div>
 
-    <!-- Barra Lateral -->
     <aside id="sidebar">
         <div class="brand">
-            <!-- NOME TRAIL -->
-            <h1>TRAIL</h1>
+            <h1>TRAIL SYSTEM</h1>
             <button class="btn-close-sidebar" onclick="APP.toggleMenu()">×</button>
         </div>
         <nav class="nav-menu">
             <button onclick="APP.nav('dashboard')" id="btn-dashboard" class="nav-item active">📊 Dashboard</button>
+            <button onclick="APP.nav('vendas')" id="btn-vendas" class="nav-item">💰 Vendas</button> <!-- NOVA ABA -->
             <button onclick="APP.nav('agenda')" id="btn-agenda" class="nav-item">📅 Agenda</button>
             <button onclick="APP.nav('funil')" id="btn-funil" class="nav-item">⚡ Funil</button>
             <button onclick="APP.nav('clientes')" id="btn-clientes" class="nav-item">📇 Clientes</button>
@@ -47,11 +40,10 @@
         <div class="sidebar-footer">
             <div id="user-info" style="color: #fbbf24; font-weight: 800; margin-bottom: 5px;"></div>
             <button onclick="APP.logout()" style="background:none; border:1px solid #374151; color:#9ca3af; padding:4px; width:100%; cursor:pointer;">SAIR</button>
-            <div style="margin-top:15px; font-size:9px; opacity:0.5;">v3.9.20 (TRAIL)</div>
+            <div style="margin-top:15px; font-size:9px; opacity:0.5; color: #fbbf24;">v3.9.22 (Metas)</div>
         </div>
     </aside>
 
-    <!-- Conteúdo Principal -->
     <main id="main-content">
         <header>
             <div class="header-left">
@@ -70,13 +62,19 @@
                     <div class="card-stat"><label>Margem de Venda Total</label><div id="kpi-margin" class="value">R$ 0,00</div></div>
                 </div>
                 
-                <div id="dash-inventory-grid" class="inventory-panel-grid">
-                    <!-- Inserido via JS apenas para GESTOR -->
+                <!-- NOVO: WIDGET DE METAS -->
+                <div class="data-card" style="margin-bottom: 20px;">
+                    <div class="data-card-header">🎯 Metas do Mês</div>
+                    <div id="goals-container" style="padding: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        <!-- Barras de progresso inseridas via JS -->
+                    </div>
                 </div>
+
+                <div id="dash-inventory-grid" class="inventory-panel-grid"></div>
 
                 <div class="grid-2-col">
                     <div class="data-card">
-                        <div class="data-card-header">Performance Equipa</div>
+                        <div class="data-card-header">Performance Equipe</div>
                         <div class="table-responsive">
                             <table id="table-performance">
                                 <thead><tr><th>Nome</th><th>Em Aberto</th><th>Ganhos</th><th>% Conv.</th><th>Total</th></tr></thead>
@@ -84,10 +82,35 @@
                             </table>
                         </div>
                     </div>
-
                     <div class="data-card">
                         <div class="data-card-header">🏆 Top Vendedores</div>
                         <div id="ranking-list" style="padding: 10px;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- NOVA ABA: VENDAS DETALHADAS -->
+            <section id="tab-vendas" class="tab-content">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="search-sales" onkeyup="APP.renderSalesTable()" placeholder="Buscar venda, cliente ou equipamento..." style="padding: 10px; flex: 1; border-radius: 6px; border: 1px solid #d1d5db;">
+                </div>
+                <div class="data-card">
+                    <div class="data-card-header">Histórico de Vendas</div>
+                    <div class="table-responsive">
+                        <table id="table-sales-detail">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Cliente</th>
+                                    <th>Vendedor</th>
+                                    <th>Equipamento</th>
+                                    <th>Custo (Compra)</th>
+                                    <th>Valor (Venda)</th>
+                                    <th>Lucro</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
                 </div>
             </section>
@@ -99,6 +122,18 @@
                 </div>
             </section>
 
+            <!-- ABA FUNIL -->
+            <section id="tab-funil" class="tab-content">
+                <div style="margin-bottom: 15px; display: flex; justify-content: space-between;">
+                    <h3 style="font-weight:900;">MEU FUNIL</h3>
+                    <div style="display:flex; gap:10px;">
+                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:5px;"><option value="all">Todos</option></select>
+                        <button onclick="APP.prepareDeal()" class="btn btn-main">+ Oportunidade</button>
+                    </div>
+                </div>
+                <div id="kanban-board" class="kanban-board"></div>
+            </section>
+
             <!-- ABA CLIENTES -->
             <section id="tab-clientes" class="tab-content">
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -108,7 +143,6 @@
                 <div class="data-card">
                     <div class="table-responsive">
                         <table id="table-clients">
-                            <!-- CABEÇALHO ATUALIZADO COM NOVAS COLUNAS -->
                             <thead><tr><th>Cliente / CPF</th><th>Contato</th><th>Cidade/Obs</th><th>Total Gasto</th><th>Docs</th><th>Ação</th></tr></thead>
                             <tbody></tbody>
                         </table>
@@ -124,7 +158,6 @@
                     <button id="btn-import-stock" class="btn btn-dark gestor-ctrl" onclick="document.getElementById('file-import').click()">📂 Importar CSV</button>
                     <button id="btn-new-stock" class="btn btn-main gestor-ctrl" onclick="APP.prepareStock()">+ Novo Item</button>
                 </div>
-                
                 <div class="data-card">
                     <div class="data-card-header">Disponível no Pátio</div>
                     <div class="table-responsive">
@@ -134,7 +167,6 @@
                         </table>
                     </div>
                 </div>
-
                 <div class="data-card" style="margin-top: 30px; border-color: #9ca3af;">
                     <div class="data-card-header" style="background: #4b5563; color: #fff;">Itens Vendidos / Arquivados</div>
                     <div class="table-responsive">
@@ -146,29 +178,11 @@
                 </div>
             </section>
 
-            <!-- ABA FUNIL -->
-            <section id="tab-funil" class="tab-content">
-                <div style="margin-bottom: 15px; display: flex; justify-content: space-between;">
-                    <h3 style="font-weight:900;">MEU FUNIL</h3>
-                    <div style="display:flex; gap:10px;">
-                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:5px;"><option value="all">Todos</option></select>
-                        <button onclick="APP.prepareDeal()" class="btn btn-main">+ Oportunidade</button>
-                    </div>
-                </div>
-                <div id="kanban-board" class="kanban-board"></div>
-            </section>
-            
             <!-- ABA RELATÓRIOS -->
             <section id="tab-relatorios" class="tab-content">
                 <div class="filter-bar">
-                    <div class="filter-group">
-                        <label>Data Início</label>
-                        <input type="date" id="rep-start">
-                    </div>
-                    <div class="filter-group">
-                        <label>Data Fim</label>
-                        <input type="date" id="rep-end">
-                    </div>
+                    <div class="filter-group"><label>Data Início</label><input type="date" id="rep-start"></div>
+                    <div class="filter-group"><label>Data Fim</label><input type="date" id="rep-end"></div>
                     <div class="filter-group">
                         <label>Origem</label>
                         <select id="rep-source">
@@ -189,12 +203,10 @@
                     <button class="btn btn-main" onclick="APP.renderReports()">Filtrar</button>
                     <button class="btn btn-dark" onclick="window.print()">🖨️ Imprimir</button>
                 </div>
-
                 <div class="grid-stats">
                     <div class="card-stat"><label>Total Vendido (Período)</label><div id="rep-total-val" class="value" style="color:#0ea5e9">R$ 0,00</div></div>
                     <div class="card-stat"><label>Vendas Fechadas</label><div id="rep-total-count" class="value">0</div></div>
                 </div>
-
                 <div class="data-card">
                     <div class="data-card-header">Detalhamento de Vendas</div>
                     <div class="table-responsive">
@@ -208,11 +220,10 @@
 
             <!-- ABA EQUIPA -->
             <section id="tab-equipe" class="tab-content">
-                <!-- Mudado para admin-only para esconder de assistentes -->
                 <button onclick="APP.modal('modal-user')" class="btn btn-main admin-only" style="margin-bottom:15px;">+ Novo Membro</button>
                 <div class="data-card">
                     <table id="table-users">
-                        <thead><tr><th>Nome</th><th>Função</th><th>Ação</th></tr></thead>
+                        <thead><tr><th>Nome</th><th>Função</th><th>Meta (Mês)</th><th>Ação</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -237,21 +248,17 @@
         </div>
     </div>
 
-    <!-- MODAL CLIENTE (NOVO CAMPO CPF E DOCS) -->
     <div id="modal-client" class="modal">
         <div class="modal-box">
             <h3>Novo Cliente</h3>
             <form onsubmit="APP.saveClient(event)">
                 <input type="hidden" id="cli-id">
                 <div class="form-item"><label>Nome Completo</label><input id="cli-name" required></div>
-                <!-- NOVO CAMPO: CPF/CNPJ -->
                 <div class="form-item"><label>CPF / CNPJ</label><input id="cli-cpf" placeholder="000.000.000-00"></div>
                 <div class="form-item"><label>Telefone (WhatsApp)</label><input id="cli-phone" oninput="APP.inputPhone(this)" placeholder="(00) 00000-0000"></div>
                 <div class="form-item"><label>Email</label><input id="cli-email" type="email"></div>
                 <div class="form-item"><label>Cidade / Obs</label><input id="cli-obs"></div>
-                <!-- NOVO CAMPO: LINK DOCS -->
                 <div class="form-item"><label>Link Documentos (Drive/Nuvem)</label><input id="cli-docs" placeholder="Cole o link do Google Drive/Dropbox aqui"></div>
-                
                 <button class="btn btn-main" style="width:100%">Salvar</button>
                 <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
             </form>
@@ -276,7 +283,6 @@
                     <input id="deal-client" list="list-clients" required placeholder="Digite ou selecione...">
                     <datalist id="list-clients"></datalist>
                 </div>
-                
                 <div class="form-item">
                     <label>Origem do Lead</label>
                     <select id="deal-source">
@@ -289,22 +295,20 @@
                         <option value="Outros">Outros</option>
                     </select>
                 </div>
-
                 <div class="form-item"><label>Valor (R$)</label><input id="deal-value" required oninput="APP.maskMoney(this)"></div>
                 <div class="form-item"><label>Tipo</label><select id="deal-type" onchange="APP.toggleStock()"><option value="maquina">Máquina</option><option value="consorcio">Consórcio</option></select></div>
                 <div class="form-item" id="div-stock-select"><label>Vincular Máquina</label><select id="deal-stock"></select></div>
-                
                 <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
                 <h4 style="margin-bottom:10px; font-size:12px;">Agendar Próxima Ação</h4>
                 <div class="form-item"><label>Data</label><input type="date" id="deal-next-date"></div>
                 <div class="form-item"><label>Descrição (O que fazer?)</label><input type="text" id="deal-next-desc" placeholder="Ex: Ligar, Visitar..."></div>
-
                 <button class="btn btn-main" style="width:100%">Salvar</button>
                 <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
             </form>
         </div>
     </div>
 
+    <!-- MODAL USUÁRIO (COM CAMPO DE META) -->
     <div id="modal-user" class="modal">
         <div class="modal-box">
             <h3>Novo Usuário</h3>
@@ -317,6 +321,8 @@
                         <option value="gestor">Gestor</option>
                     </select>
                 </div>
+                <!-- NOVO CAMPO: META -->
+                <div class="form-item"><label>Meta Mensal (R$)</label><input id="usr-goal" oninput="APP.maskMoney(this)" placeholder="0,00"></div>
                 <button class="btn btn-main" style="width:100%">Salvar</button>
                 <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
             </form>
