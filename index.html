@@ -199,7 +199,7 @@
         </div>
         <nav class="nav-menu">
             <button onclick="APP.nav('dashboard')" id="btn-dashboard" class="nav-item active">📊 Dashboard</button>
-            <button onclick="APP.nav('vendas')" id="btn-vendas" class="nav-item">💰 Vendas</button> <!-- NOVA ABA -->
+            <button onclick="APP.nav('vendas')" id="btn-vendas" class="nav-item">💰 Catálogo</button> <!-- NOME ALTERADO -->
             <button onclick="APP.nav('agenda')" id="btn-agenda" class="nav-item">📅 Agenda</button>
             <button onclick="APP.nav('funil')" id="btn-funil" class="nav-item">⚡ Funil</button>
             <button onclick="APP.nav('clientes')" id="btn-clientes" class="nav-item">📇 Clientes</button>
@@ -259,26 +259,17 @@
                 </div>
             </section>
 
-            <!-- NOVA ABA: VENDAS DETALHADAS -->
+            <!-- NOVA ABA: CATÁLOGO DE VENDAS (SUBSTITUI VENDAS DETALHADAS) -->
             <section id="tab-vendas" class="tab-content">
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <input type="text" id="search-sales" onkeyup="APP.renderSalesTable()" placeholder="Buscar venda, cliente ou equipamento..." style="padding: 10px; flex: 1; border-radius: 6px; border: 1px solid #d1d5db;">
+                    <input type="text" id="search-catalog" onkeyup="APP.renderCatalog()" placeholder="Buscar item no catálogo..." style="padding: 10px; flex: 1; border-radius: 6px; border: 1px solid #d1d5db;">
                 </div>
                 <div class="data-card">
-                    <div class="data-card-header">Histórico de Vendas</div>
+                    <div class="data-card-header">Catálogo & Preços</div>
                     <div class="table-responsive">
-                        <table id="table-sales-detail">
-                            <thead>
-                                <tr>
-                                    <th>Data</th>
-                                    <th>Cliente</th>
-                                    <th>Vendedor</th>
-                                    <th>Equipamento</th>
-                                    <th>Custo (Compra)</th>
-                                    <th>Valor (Venda)</th>
-                                    <th>Lucro</th>
-                                </tr>
-                            </thead>
+                        <table id="table-catalog">
+                            <!-- CABEÇALHO PREENCHIDO VIA JS CONFORME PERMISSÃO -->
+                            <thead></thead>
                             <tbody></tbody>
                         </table>
                     </div>
@@ -637,7 +628,7 @@
                 if(tab === 'relatorios') APP.renderReports();
                 if(tab === 'clientes') APP.renderClients();
                 if(tab === 'agenda') APP.renderAgenda();
-                if(tab === 'vendas') APP.renderSalesTable(); 
+                if(tab === 'vendas') APP.renderCatalog(); // ALTERADO: CHAMA O CATÁLOGO
                 if(tab === 'dashboard') APP.renderGoals(); 
             },
 
@@ -827,62 +818,143 @@
                 container.innerHTML = html;
             },
 
-            renderSalesTable: () => {
-                if (!APP.user) return; // FIX: Previne erro ao iniciar sem utilizador
+            // NOVA FUNÇÃO: RENDERIZAR O CATÁLOGO
+            renderCatalog: () => {
+                if (!APP.user) return; 
 
-                const tbody = document.querySelector('#table-sales-detail tbody');
-                if(!tbody) return;
+                const tbody = document.querySelector('#table-catalog tbody');
+                const thead = document.querySelector('#table-catalog thead');
+                if(!tbody || !thead) return;
 
-                const term = document.getElementById('search-sales') ? document.getElementById('search-sales').value.toLowerCase() : '';
+                const term = document.getElementById('search-catalog') ? document.getElementById('search-catalog').value.toLowerCase() : '';
                 
-                let sales = APP.data.deals.filter(d => d.stage === 'ganho');
-
                 const isGestor = APP.user.role === 'gestor';
                 const isAssistente = APP.user.role === 'assistente';
-                if (!isGestor && !isAssistente) {
-                    sales = sales.filter(d => d.owner === APP.user.name);
+                const canEdit = isGestor || isAssistente;
+
+                // Define cabeçalhos
+                if (canEdit) {
+                    thead.innerHTML = `<tr><th>Modelo</th><th>Status</th><th>Custo (R$)</th><th style="width:140px">Preço Venda (R$)</th><th style="width:140px">Preço Promo (R$)</th><th>Margem Est.</th></tr>`;
+                } else {
+                    thead.innerHTML = `<tr><th>Modelo</th><th>Status</th><th>Preço</th></tr>`;
                 }
 
-                sales.sort((a,b) => new Date(b.close_date || 0) - new Date(a.close_date || 0));
+                let items = APP.data.stock.filter(s => s.status !== 'Vendido'); 
+                items.sort((a,b) => a.model.localeCompare(b.model));
 
                 let html = '';
-                sales.forEach(d => {
-                    let prodName = 'Consórcio/Serviço';
-                    let cost = d.original_cost || 0; 
+                items.forEach(s => {
+                    if (term && !s.model.toLowerCase().includes(term)) return;
+
+                    const cost = s.cost || 0;
+                    const sale = s.sale_price || 0;
+                    const promo = s.promo_price || 0;
                     
-                    if (cost === 0 && d.stock_id) {
-                        const s = APP.data.stock.find(x => x.id === d.stock_id);
-                        if(s) {
-                            prodName = s.model;
-                            cost = s.cost;
+                    let statusBadgeClass = 'badge-success';
+                    if (s.status === 'Reservado') statusBadgeClass = 'badge-warning';
+
+                    if (canEdit) {
+                        // Cálculo da margem para o gestor
+                        // Se houver preço promocional, usa ele para o calculo da margem exibida, senão usa o preço normal
+                        const activePrice = promo > 0 ? promo : sale;
+                        const marginVal = activePrice - cost;
+                        const marginColor = marginVal >= 0 ? '#10b981' : '#ef4444';
+                        
+                        html += `
+                            <tr>
+                                <td><b>${s.model}</b><br><small style="color:#9ca3af">${s.mono || ''}</small></td>
+                                <td><span class="badge ${statusBadgeClass}">${s.status}</span></td>
+                                <td style="color:#6b7280;">${cost.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                                <td>
+                                    <input type="text" 
+                                        value="${sale > 0 ? (sale/100*100).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : ''}" 
+                                        oninput="APP.maskMoney(this); APP.calcMarginDisplay(this, '${s.id}', ${cost}, 'sale')" 
+                                        onchange="APP.saveCatalogPrice('${s.id}', 'sale_price', this.value)"
+                                        placeholder="0,00"
+                                        style="width:100%; padding:6px; border:1px solid #d1d5db; border-radius:4px; font-weight:bold;">
+                                </td>
+                                <td>
+                                    <input type="text" 
+                                        value="${promo > 0 ? (promo/100*100).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : ''}" 
+                                        oninput="APP.maskMoney(this); APP.calcMarginDisplay(this, '${s.id}', ${cost}, 'promo')" 
+                                        onchange="APP.saveCatalogPrice('${s.id}', 'promo_price', this.value)"
+                                        placeholder="Promoção..."
+                                        style="width:100%; padding:6px; border:1px solid #fca5a5; border-radius:4px; color:#b91c1c; font-weight:bold;">
+                                </td>
+                                <td id="margin-${s.id}" style="color:${marginColor}; font-weight:900;">
+                                    ${marginVal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        // Visão do Vendedor
+                        let priceDisplay = '';
+                        if (promo > 0) {
+                            priceDisplay = `
+                                <div style="text-decoration: line-through; color: #9ca3af; font-size: 10px;">De: ${sale.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div>
+                                <div style="color: #ef4444; font-weight: 900; font-size: 14px;">Por: ${promo.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div>
+                            `;
+                        } else if (sale > 0) {
+                            priceDisplay = `<div style="font-weight: 900; font-size: 14px; color: #111827;">${sale.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div>`;
+                        } else {
+                            priceDisplay = `<span style="color:#9ca3af; font-style:italic;">Sob Consulta</span>`;
                         }
-                    } else if (d.stock_id) {
-                         const s = APP.data.stock.find(x => x.id === d.stock_id);
-                         if(s) prodName = s.model;
+
+                        html += `
+                            <tr>
+                                <td><b>${s.model}</b><br><small style="color:#9ca3af">${s.mono || ''}</small></td>
+                                <td><span class="badge ${statusBadgeClass}">${s.status}</span></td>
+                                <td>${priceDisplay}</td>
+                            </tr>
+                        `;
                     }
-
-                    if (term && !d.client.toLowerCase().includes(term) && !prodName.toLowerCase().includes(term)) return;
-
-                    const margin = d.value - cost;
-                    const dateBr = d.close_date ? new Date(d.close_date).toLocaleDateString('pt-BR') : '-';
-
-                    html += `
-                        <tr>
-                            <td>${dateBr}</td>
-                            <td><b>${d.client}</b></td>
-                            <td>${d.owner}</td>
-                            <td>${prodName}</td>
-                            <td style="color:#6b7280;">${cost.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td>
-                            <td style="font-weight:bold;">${d.value.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td>
-                            <td style="color:${margin >= 0 ? '#10b981' : '#ef4444'}; font-weight:bold;">
-                                ${margin.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}
-                            </td>
-                        </tr>
-                    `;
                 });
 
-                if (!html) html = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#9ca3af">Nenhuma venda encontrada.</td></tr>';
+                if (!html) html = `<tr><td colspan="${canEdit ? 6 : 3}" style="text-align:center; padding:20px; color:#9ca3af">Nenhum item no catálogo.</td></tr>`;
                 tbody.innerHTML = html;
+            },
+
+            // ATUALIZAR PREÇO NO BANCO (GESTÃO DE PREÇOS)
+            saveCatalogPrice: async (id, field, value) => {
+                const valNum = APP.parseMoney(value);
+                
+                // Atualiza localmente para refletir sem refresh
+                const itemIndex = APP.data.stock.findIndex(s => s.id === id);
+                if (itemIndex > -1) {
+                    APP.data.stock[itemIndex][field] = valNum;
+                }
+
+                // Atualiza no banco
+                const { error } = await supabaseClient.from('stock').update({ [field]: valNum }).eq('id', id);
+                
+                if (error) {
+                    // Fallback para erro caso a coluna não exista ainda
+                    console.error("Erro ao salvar preço:", error);
+                    alert("Atenção: Não foi possível salvar. Verifique se as colunas 'sale_price' e 'promo_price' foram criadas no banco de dados.");
+                } else {
+                    APP.toast("Preço atualizado!");
+                }
+            },
+
+            // CALCULAR MARGEM VISUALMENTE (DURANTE A DIGITAÇÃO)
+            calcMarginDisplay: (input, id, cost, type) => {
+                const val = APP.parseMoney(input.value);
+                const item = APP.data.stock.find(s => s.id === id);
+                if (!item) return;
+
+                // Pega o outro valor (se estou editando sale, pego promo atual e vice-versa) para saber qual é o "ativo"
+                let sale = type === 'sale' ? val : (item.sale_price || 0);
+                let promo = type === 'promo' ? val : (item.promo_price || 0);
+
+                // Regra: Se tem promo > 0, a margem é sobre a promo
+                const activePrice = promo > 0 ? promo : sale;
+                const margin = activePrice - cost;
+                
+                const el = document.getElementById('margin-'+id);
+                if (el) {
+                    el.innerText = margin.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+                    el.style.color = margin >= 0 ? '#10b981' : '#ef4444';
+                }
             },
 
             deleteUser: async (id) => {
@@ -1502,7 +1574,7 @@
                 APP.renderKPIs(); 
                 APP.renderClients(); 
                 APP.renderAgenda(); 
-                APP.renderSalesTable(); // NOVA TABELA DE VENDAS
+                APP.renderCatalog(); // NOVA TABELA DE CATÁLOGO (SUBSTITUI SALES TABLE)
                 APP.renderGoals(); // NOVO WIDGET DE METAS
             },
         };
