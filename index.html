@@ -381,7 +381,7 @@
 
             <!-- ABA EQUIPA -->
             <section id="tab-equipe" class="tab-content">
-                <button onclick="APP.modal('modal-user')" class="btn btn-main admin-only" style="margin-bottom:15px;">+ Novo Membro</button>
+                <button onclick="APP.prepareUser()" class="btn btn-main admin-only" style="margin-bottom:15px;">+ Novo Membro</button>
                 <div class="data-card">
                     <table id="table-users">
                         <thead><tr><th>Nome</th><th>Função</th><th>Meta (Mês)</th><th>Ação</th></tr></thead>
@@ -472,8 +472,9 @@
     <!-- MODAL USUÁRIO (COM CAMPO DE META) -->
     <div id="modal-user" class="modal">
         <div class="modal-box">
-            <h3>Novo Usuário</h3>
+            <h3>Membro da Equipe</h3>
             <form onsubmit="APP.saveUser(event)">
+                <input type="hidden" id="usr-id">
                 <div class="form-item"><label>Nome</label><input id="usr-name" required></div>
                 <div class="form-item"><label>Função</label>
                     <select id="usr-role">
@@ -701,27 +702,63 @@
                 APP.user = null; 
             },
 
+            // FUNÇÃO PARA PREPARAR CRIAÇÃO DE USUÁRIO
+            prepareUser: () => {
+                document.getElementById('usr-id').value = '';
+                document.getElementById('usr-name').value = '';
+                document.getElementById('usr-role').value = 'vendedor';
+                document.getElementById('usr-goal').value = '';
+                APP.modal('modal-user');
+            },
+
+            // FUNÇÃO PARA PREPARAR EDIÇÃO DE USUÁRIO
+            editUser: (id) => {
+                const u = APP.data.users.find(x => x.id === id);
+                if(!u) return;
+                
+                document.getElementById('usr-id').value = u.id;
+                document.getElementById('usr-name').value = u.name;
+                document.getElementById('usr-role').value = u.role;
+                document.getElementById('usr-goal').value = u.goal ? u.goal.toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
+                
+                APP.modal('modal-user');
+            },
+
             saveUser: async (e) => {
                 e.preventDefault();
                 
                 if (APP.user.role !== 'gestor') {
-                    return alert("Acesso negado: Apenas gestores podem adicionar membros.");
+                    return alert("Acesso negado: Apenas gestores podem gerenciar membros.");
                 }
 
-                const pwd = prompt("Defina uma senha para este usuário (Opcional - Deixe em branco para sem senha):");
+                const id = document.getElementById('usr-id').value;
                 
                 const userData = { 
                     name: document.getElementById('usr-name').value, 
                     role: document.getElementById('usr-role').value,
-                    password: pwd || null,
-                    // goal: APP.parseMoney(document.getElementById('usr-goal').value) // COMENTADO: Ative apenas se criar a coluna 'goal' no Supabase
+                    goal: APP.parseMoney(document.getElementById('usr-goal').value)
                 };
+
+                let pwd = null;
+                if (!id) {
+                    // Novo Usuário: Pedir senha obrigatória ou opcional
+                    pwd = prompt("Defina uma senha para este usuário (Opcional - Deixe em branco para sem senha):");
+                    userData.password = pwd || null;
+                    
+                    const { data, error } = await supabaseClient.from('users').insert(userData).select();
+                    if(error) return alert("Erro ao criar usuário: " + error.message);
+                    APP.refreshLocal('users', data[0]);
+                    
+                } else {
+                    // Edição: Perguntar se quer mudar a senha
+                    pwd = prompt("Digite uma nova senha para alterar (ou deixe em branco para manter a atual):");
+                    if (pwd) userData.password = pwd;
+                    
+                    const { data, error } = await supabaseClient.from('users').update(userData).eq('id', id).select();
+                    if(error) return alert("Erro ao atualizar usuário: " + error.message);
+                    APP.refreshLocal('users', data[0]);
+                }
                 
-                const { data, error } = await supabaseClient.from('users').insert(userData).select();
-                
-                if(error) return alert("Erro ao salvar usuário: " + error.message);
-                
-                APP.refreshLocal('users', data[0]);
                 APP.closeModals();
                 APP.toast('Usuário salvo!');
             },
@@ -734,9 +771,16 @@
                 const isGestor = APP.user && APP.user.role === 'gestor';
 
                 document.querySelector('#table-users tbody').innerHTML = APP.data.users.map(u => {
-                    const deleteBtn = isGestor ? `<button class="btn btn-small btn-danger" onclick="APP.deleteUser(${u.id})">Excluir</button>` : '';
+                    let actionBtns = '';
+                    if (isGestor) {
+                        actionBtns = `
+                            <button class="btn btn-small btn-main" onclick="APP.editUser(${u.id})">✏️</button>
+                            <button class="btn btn-small btn-danger" onclick="APP.deleteUser(${u.id})">×</button>
+                        `;
+                    }
+                    
                     const goalDisplay = u.goal ? u.goal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) : '-';
-                    return `<tr><td>${u.name}</td><td>${u.role}</td><td>${goalDisplay}</td><td>${deleteBtn}</td></tr>`;
+                    return `<tr><td>${u.name}</td><td>${u.role}</td><td>${goalDisplay}</td><td>${actionBtns}</td></tr>`;
                 }).join('');
                 
                 const tbPerf = document.querySelector('#table-performance tbody');
