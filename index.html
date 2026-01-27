@@ -723,7 +723,7 @@
                     name: document.getElementById('usr-name').value, 
                     role: document.getElementById('usr-role').value,
                     password: pwd || null,
-                    goal: APP.parseMoney(document.getElementById('usr-goal').value) 
+                    // goal: APP.parseMoney(document.getElementById('usr-goal').value) // COMENTADO: Ative apenas se criar a coluna 'goal' no Supabase
                 };
                 
                 const { data, error } = await supabaseClient.from('users').insert(userData).select();
