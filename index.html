@@ -1528,10 +1528,23 @@
                 
                 const scopeDeals = (isGestor || isAssistente) ? APP.data.deals : APP.data.deals.filter(d => d.owner === APP.user.name);
                 
-                const wonDeals = scopeDeals.filter(d => d.stage === 'ganho');
+                // --- ALTERAÇÃO: FILTRO POR MÊS ATUAL ---
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+
+                const wonDeals = scopeDeals.filter(d => {
+                    if (d.stage !== 'ganho') return false;
+                    if (!d.close_date) return false;
+                    const dDate = new Date(d.close_date);
+                    return dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear;
+                });
+                // ----------------------------------------
+
                 const totalRevenue = wonDeals.reduce((a,b) => a+b.value, 0);
-                document.getElementById('lbl-faturamento').innerText = (isGestor || isAssistente) ? "Faturamento (Total)" : "Meu Faturamento";
+                document.getElementById('lbl-faturamento').innerText = (isGestor || isAssistente) ? "Faturamento (Mês)" : "Meu Faturamento (Mês)";
                 document.getElementById('kpi-total').innerText = totalRevenue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+                
                 let totalMargin = 0;
                 wonDeals.forEach(d => {
                     let cost = 0;
@@ -1544,9 +1557,11 @@
                 let marginPct = 0; if (totalRevenue > 0) { marginPct = (totalMargin / totalRevenue) * 100; }
                 const pctColor = marginPct >= 0 ? '#10b981' : '#ef4444';
                 document.getElementById('kpi-margin').innerHTML = `${totalMargin.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})} <span style="font-size:14px; color:${pctColor}; margin-left:5px;">(${marginPct.toFixed(1)}%)</span>`;
+                
                 const openDealsList = scopeDeals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido');
                 const pipelineValue = openDealsList.reduce((a,b) => a+b.value, 0);
                 document.getElementById('kpi-pipeline').innerText = pipelineValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+                
                 const gridContainer = document.getElementById('dash-inventory-grid');
                 
                 if (!isGestor && !isAssistente) { gridContainer.innerHTML = ''; return; }
