@@ -228,6 +228,7 @@
             <section id="tab-dashboard" class="tab-content active">
                 <div class="grid-stats">
                     <div class="card-stat"><label id="lbl-faturamento">Faturamento (Mês)</label><div id="kpi-total" class="value">R$ 0,00</div></div>
+                    <div class="card-stat"><label>Consórcio (Mês)</label><div id="kpi-consorcio" class="value" style="color:#f59e0b">R$ 0,00</div></div>
                     <div class="card-stat"><label>Valor em Carteira</label><div id="kpi-pipeline" class="value" style="color:#8b5cf6">R$ 0,00</div></div>
                     <div class="card-stat"><label>Margem de Venda Total</label><div id="kpi-margin" class="value">R$ 0,00</div></div>
                 </div>
@@ -1307,6 +1308,7 @@
                     source: document.getElementById('deal-source').value,
                     value: APP.parseMoney(document.getElementById('deal-value').value),
                     stock_id: stockId,
+                    deal_type: document.getElementById('deal-type').value, // Tenta salvar o tipo
                     next_date: document.getElementById('deal-next-date').value || null,
                     next_desc: document.getElementById('deal-next-desc').value,
                     owner: finalOwner // Usa o dono selecionado
@@ -1366,7 +1368,7 @@
                 document.getElementById('deal-client').value = d.client; 
                 document.getElementById('deal-source').value = d.source || 'Loja/Passante';
                 document.getElementById('deal-value').value = d.value.toLocaleString('pt-BR', {minimumFractionDigits:2}); 
-                document.getElementById('deal-type').value = d.stock_id ? 'maquina' : 'consorcio'; 
+                document.getElementById('deal-type').value = d.deal_type || (d.stock_id ? 'maquina' : 'consorcio'); 
                 document.getElementById('deal-next-date').value = d.next_date || ''; 
                 document.getElementById('deal-next-desc').value = d.next_desc || ''; 
                 
@@ -1541,19 +1543,33 @@
                 });
                 // ----------------------------------------
 
-                const totalRevenue = wonDeals.reduce((a,b) => a+b.value, 0);
+                let totalRevenue = 0;
+                let totalConsorcio = 0;
+                let totalMargin = 0;
+
+                wonDeals.forEach(d => {
+                    // SEPARAÇÃO: Se for consórcio, soma em separado
+                    if (d.deal_type === 'consorcio') {
+                        totalConsorcio += d.value;
+                    } else {
+                        // Se for máquina ou indefinido, soma no faturamento real
+                        totalRevenue += d.value;
+                        
+                        let cost = 0;
+                        if (d.original_cost !== undefined) { cost = d.original_cost; } else if (d.stock_id) {
+                            const stockItem = APP.data.stock.find(s => s.id === d.stock_id);
+                            if (stockItem) { cost = stockItem.cost; }
+                        }
+                        totalMargin += (d.value - cost);
+                    }
+                });
+
                 document.getElementById('lbl-faturamento').innerText = (isGestor || isAssistente) ? "Faturamento (Mês)" : "Meu Faturamento (Mês)";
                 document.getElementById('kpi-total').innerText = totalRevenue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
                 
-                let totalMargin = 0;
-                wonDeals.forEach(d => {
-                    let cost = 0;
-                    if (d.original_cost !== undefined) { cost = d.original_cost; } else if (d.stock_id) {
-                        const stockItem = APP.data.stock.find(s => s.id === d.stock_id);
-                        if (stockItem) { cost = stockItem.cost; }
-                    }
-                    totalMargin += (d.value - cost);
-                });
+                // EXIBE O TOTAL DE CONSÓRCIO NO NOVO CARD
+                document.getElementById('kpi-consorcio').innerText = totalConsorcio.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
                 let marginPct = 0; if (totalRevenue > 0) { marginPct = (totalMargin / totalRevenue) * 100; }
                 const pctColor = marginPct >= 0 ? '#10b981' : '#ef4444';
                 document.getElementById('kpi-margin').innerHTML = `${totalMargin.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})} <span style="font-size:14px; color:${pctColor}; margin-left:5px;">(${marginPct.toFixed(1)}%)</span>`;
