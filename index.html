@@ -439,6 +439,13 @@
             <h3>Detalhes do Negócio</h3>
             <form onsubmit="APP.saveDeal(event)">
                 <input type="hidden" id="deal-id">
+                
+                <!-- NOVO: Seleção de Vendedor (Responsável) -->
+                <div class="form-item" id="div-deal-owner" style="display:none;">
+                    <label>Responsável (Vendedor)</label>
+                    <select id="deal-owner" style="background:#fefce8; border-color:#f59e0b;"></select>
+                </div>
+
                 <div class="form-item">
                     <label>Cliente</label>
                     <input id="deal-client" list="list-clients" required placeholder="Digite ou selecione...">
@@ -629,7 +636,7 @@
                 if(tab === 'relatorios') APP.renderReports();
                 if(tab === 'clientes') APP.renderClients();
                 if(tab === 'agenda') APP.renderAgenda();
-                if(tab === 'vendas') APP.renderCatalog(); // ALTERADO: CHAMA O CATÁLOGO
+                if(tab === 'vendas') APP.renderCatalog(); 
                 if(tab === 'dashboard') APP.renderGoals(); 
             },
 
@@ -750,10 +757,7 @@
                     APP.refreshLocal('users', data[0]);
                     
                 } else {
-                    // Edição: Perguntar se quer mudar a senha
-                    pwd = prompt("Digite uma nova senha para alterar (ou deixe em branco para manter a atual):");
-                    if (pwd) userData.password = pwd;
-                    
+                    // Edição: Mantém a senha existente (não pergunta nada)
                     const { data, error } = await supabaseClient.from('users').update(userData).eq('id', id).select();
                     if(error) return alert("Erro ao atualizar usuário: " + error.message);
                     APP.refreshLocal('users', data[0]);
@@ -1268,6 +1272,24 @@
                 APP.data.stock.filter(s => s.status !== 'Vendido').forEach(s => { const selected = preselectedStockId === s.id ? 'selected' : ''; sel.innerHTML += `<option value="${s.id}" ${selected}>${s.model} - R$ ${s.cost}</option>`; });
                 const dl = document.getElementById('list-clients');
                 dl.innerHTML = APP.data.clients.map(c => `<option value="${c.name}">`).join('');
+                
+                // --- NOVA LÓGICA DE SELEÇÃO DE VENDEDOR ---
+                const isGestorOrAssistente = ['gestor', 'assistente'].includes(APP.user.role);
+                const ownerSelect = document.getElementById('deal-owner');
+                const ownerDiv = document.getElementById('div-deal-owner');
+
+                if (isGestorOrAssistente) {
+                    ownerDiv.style.display = 'block';
+                    // Lista todos os usuários, mas pode filtrar por role='vendedor' se preferir
+                    ownerSelect.innerHTML = APP.data.users
+                        .map(u => `<option value="${u.name}" ${u.name === APP.user.name ? 'selected' : ''}>${u.name}</option>`)
+                        .join('');
+                } else {
+                    ownerDiv.style.display = 'none';
+                    ownerSelect.innerHTML = `<option value="${APP.user.name}" selected>${APP.user.name}</option>`;
+                }
+                // --- FIM DA NOVA LÓGICA ---
+
                 APP.modal('modal-deal');
             },
 
@@ -1275,6 +1297,11 @@
                 e.preventDefault();
                 const id = document.getElementById('deal-id').value;
                 const stockId = document.getElementById('deal-stock').value || null; 
+                
+                // --- LÊ O DONO SELECIONADO OU USA O PADRÃO ---
+                const selectedOwner = document.getElementById('deal-owner').value;
+                const finalOwner = selectedOwner || APP.user.name;
+
                 const dealData = {
                     client: document.getElementById('deal-client').value,
                     source: document.getElementById('deal-source').value,
@@ -1282,7 +1309,7 @@
                     stock_id: stockId,
                     next_date: document.getElementById('deal-next-date').value || null,
                     next_desc: document.getElementById('deal-next-desc').value,
-                    owner: APP.user.name 
+                    owner: finalOwner // Usa o dono selecionado
                 };
 
                 if (id) {
@@ -1333,6 +1360,8 @@
                 const d = APP.data.deals.find(x => x.id === id); 
                 if (!d) return; 
                 APP.prepareDeal(d.stock_id); 
+                
+                // Preenche os dados normais
                 document.getElementById('deal-id').value = d.id; 
                 document.getElementById('deal-client').value = d.client; 
                 document.getElementById('deal-source').value = d.source || 'Loja/Passante';
@@ -1340,6 +1369,13 @@
                 document.getElementById('deal-type').value = d.stock_id ? 'maquina' : 'consorcio'; 
                 document.getElementById('deal-next-date').value = d.next_date || ''; 
                 document.getElementById('deal-next-desc').value = d.next_desc || ''; 
+                
+                // Define o dono correto no select (para gestores/assistentes editarem)
+                const ownerSelect = document.getElementById('deal-owner');
+                if (ownerSelect) {
+                    ownerSelect.value = d.owner;
+                }
+
                 APP.toggleStock();
             },
 
