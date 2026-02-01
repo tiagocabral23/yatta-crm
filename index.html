@@ -4,14 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#111827">
-    <title>TRAIL SYSTEM v3.9.22 | Metas & Vendas</title>
+    <title>TRAIL SYSTEM v4.0 | Metas, Vendas & Geo</title>
     
     <!-- Bibliotecas Externas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <!-- LEAFLET MAPS (NOVO) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <style>
-        /* TRAIL SYSTEM - v3.9.22 
+        /* TRAIL SYSTEM - v4.0 
            Estilos Visuais
         */
 
@@ -38,9 +42,16 @@
         header { height: 60px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
         .header-left { display: flex; align-items: center; }
         .viewport { flex: 1; padding: 20px; overflow-y: auto; background: #f3f4f6; }
-        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content { display: none; animation: fadeIn 0.3s; height: 100%; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ESTILOS ESPECÍFICOS DO MAPA */
+        #map-container { height: 100%; width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }
+        #map { height: 100%; width: 100%; z-index: 1; }
+        .map-legend { position: absolute; bottom: 20px; right: 20px; background: white; padding: 10px; border-radius: 8px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); max-height: 200px; overflow-y: auto; font-size: 10px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .legend-color { width: 10px; height: 10px; border-radius: 50%; }
 
         /* CARDS DO DASHBOARD E RELATÓRIO */
         .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
@@ -199,7 +210,8 @@
         </div>
         <nav class="nav-menu">
             <button onclick="APP.nav('dashboard')" id="btn-dashboard" class="nav-item active">📊 Dashboard</button>
-            <button onclick="APP.nav('vendas')" id="btn-vendas" class="nav-item">💰 Catálogo</button> <!-- NOME ALTERADO -->
+            <button onclick="APP.nav('mapa')" id="btn-mapa" class="nav-item">🗺️ Mapa MG</button> <!-- NOVO ITEM -->
+            <button onclick="APP.nav('vendas')" id="btn-vendas" class="nav-item">💰 Catálogo</button>
             <button onclick="APP.nav('agenda')" id="btn-agenda" class="nav-item">📅 Agenda</button>
             <button onclick="APP.nav('funil')" id="btn-funil" class="nav-item">⚡ Funil</button>
             <button onclick="APP.nav('clientes')" id="btn-clientes" class="nav-item">📇 Clientes</button>
@@ -210,7 +222,7 @@
         <div class="sidebar-footer">
             <div id="user-info" style="color: #fbbf24; font-weight: 800; margin-bottom: 5px;"></div>
             <button onclick="APP.logout()" style="background:none; border:1px solid #374151; color:#9ca3af; padding:4px; width:100%; cursor:pointer;">SAIR</button>
-            <div style="margin-top:15px; font-size:9px; opacity:0.5; color: #fbbf24;">v3.9.22 (Metas)</div>
+            <div style="margin-top:15px; font-size:9px; opacity:0.5; color: #fbbf24;">v4.0.0 (Geo)</div>
         </div>
     </aside>
 
@@ -233,12 +245,9 @@
                     <div class="card-stat"><label>Margem de Venda Total</label><div id="kpi-margin" class="value">R$ 0,00</div></div>
                 </div>
                 
-                <!-- NOVO: WIDGET DE METAS -->
                 <div class="data-card" style="margin-bottom: 20px;">
                     <div class="data-card-header">🎯 Metas do Mês</div>
-                    <div id="goals-container" style="padding: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-                        <!-- Barras de progresso inseridas via JS -->
-                    </div>
+                    <div id="goals-container" style="padding: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;"></div>
                 </div>
 
                 <div id="dash-inventory-grid" class="inventory-panel-grid"></div>
@@ -260,7 +269,23 @@
                 </div>
             </section>
 
-            <!-- NOVA ABA: CATÁLOGO DE VENDAS (SUBSTITUI VENDAS DETALHADAS) -->
+            <!-- ABA MAPA (NOVA) -->
+            <section id="tab-mapa" class="tab-content">
+                <div class="data-card" style="height: calc(100vh - 120px); margin-bottom: 0; display:flex; flex-direction:column;">
+                    <div class="data-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>🗺️ Vendas Realizadas (MG)</span>
+                        <span style="font-size:9px; font-weight:normal;">Baseado no cadastro de clientes</span>
+                    </div>
+                    <div style="flex:1; padding:10px; position:relative;">
+                        <div id="map-container">
+                            <div id="map"></div>
+                            <div id="map-legend" class="map-legend"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA CATÁLOGO -->
             <section id="tab-vendas" class="tab-content">
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                     <input type="text" id="search-catalog" onkeyup="APP.renderCatalog()" placeholder="Buscar item no catálogo..." style="padding: 10px; flex: 1; border-radius: 6px; border: 1px solid #d1d5db;">
@@ -269,7 +294,6 @@
                     <div class="data-card-header">Catálogo & Preços</div>
                     <div class="table-responsive">
                         <table id="table-catalog">
-                            <!-- CABEÇALHO PREENCHIDO VIA JS CONFORME PERMISSÃO -->
                             <thead></thead>
                             <tbody></tbody>
                         </table>
@@ -419,7 +443,7 @@
                 <div class="form-item"><label>CPF / CNPJ</label><input id="cli-cpf" placeholder="000.000.000-00"></div>
                 <div class="form-item"><label>Telefone (WhatsApp)</label><input id="cli-phone" oninput="APP.inputPhone(this)" placeholder="(00) 00000-0000"></div>
                 <div class="form-item"><label>Email</label><input id="cli-email" type="email"></div>
-                <div class="form-item"><label>Cidade / Obs</label><input id="cli-obs"></div>
+                <div class="form-item"><label>Cidade / Obs</label><input id="cli-obs" placeholder="Ex: Belo Horizonte - MG"></div>
                 <div class="form-item"><label>Link Documentos (Drive/Nuvem)</label><input id="cli-docs" placeholder="Cole o link do Google Drive/Dropbox aqui"></div>
                 <button class="btn btn-main" style="width:100%">Salvar</button>
                 <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
@@ -441,7 +465,6 @@
             <form onsubmit="APP.saveDeal(event)">
                 <input type="hidden" id="deal-id">
                 
-                <!-- NOVO: Seleção de Vendedor (Responsável) -->
                 <div class="form-item" id="div-deal-owner" style="display:none;">
                     <label>Responsável (Vendedor)</label>
                     <select id="deal-owner" style="background:#fefce8; border-color:#f59e0b;"></select>
@@ -452,6 +475,14 @@
                     <input id="deal-client" list="list-clients" required placeholder="Digite ou selecione...">
                     <datalist id="list-clients"></datalist>
                 </div>
+                
+                <!-- NOVO CAMPO: CIDADE (PARA O MAPA) -->
+                <div class="form-item">
+                    <label>Cidade / Local (Para o Mapa)</label>
+                    <input id="deal-city" list="list-cities-mg" placeholder="Selecione ou digite...">
+                    <datalist id="list-cities-mg"></datalist>
+                </div>
+
                 <div class="form-item">
                     <label>Origem do Lead</label>
                     <select id="deal-source">
@@ -477,7 +508,6 @@
         </div>
     </div>
 
-    <!-- MODAL USUÁRIO (COM CAMPO DE META) -->
     <div id="modal-user" class="modal">
         <div class="modal-box">
             <h3>Membro da Equipe</h3>
@@ -491,7 +521,6 @@
                         <option value="gestor">Gestor</option>
                     </select>
                 </div>
-                <!-- NOVO CAMPO: META -->
                 <div class="form-item"><label>Meta Mensal (R$)</label><input id="usr-goal" oninput="APP.maskMoney(this)" placeholder="0,00"></div>
                 <button class="btn btn-main" style="width:100%">Salvar</button>
                 <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
@@ -503,16 +532,103 @@
 
     <script>
         /**
-         * TRAIL SYSTEM - v3.9.22 (CLOUD - METAS & VENDAS)
+         * TRAIL SYSTEM - v4.0 (CLOUD - METAS, VENDAS & MAPA)
          * Conectado ao Supabase (PostgreSQL)
          */
 
-        // CREDENCIAIS DO SUPABASE
         const SUPABASE_URL = 'https://igvdhpzzjamoyetxickb.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_mXmrR5peC1mICxxMxjDKrg_2NJUZG0Q'; // Chave fornecida
+        const SUPABASE_KEY = 'sb_publishable_mXmrR5peC1mICxxMxjDKrg_2NJUZG0Q'; 
 
-        // Inicializa o cliente Supabase
         let supabaseClient;
+
+        // COORDENADAS: TODAS AS CIDADES DA MESORREGIÃO DO NORTE DE MINAS GERAIS
+        const MG_CITIES_COORDS = {
+            "Águas Vermelhas": [-15.74, -41.46],
+            "Berizal": [-15.60, -41.75],
+            "Bocaiúva": [-17.10, -43.81],
+            "Bonito de Minas": [-15.22, -44.75],
+            "Botumirim": [-16.86, -43.00],
+            "Brasília de Minas": [-16.20, -44.43],
+            "Buritizeiro": [-17.35, -44.96],
+            "Campo Azul": [-16.50, -44.80],
+            "Capitão Enéas": [-16.32, -43.70],
+            "Catuti": [-15.35, -42.93],
+            "Chapada Gaúcha": [-15.30, -45.61],
+            "Claro dos Poções": [-16.87, -44.53],
+            "Cônego Marinho": [-15.32, -44.40],
+            "Coração de Jesus": [-16.68, -44.36],
+            "Cristália": [-16.71, -42.86],
+            "Curral de Dentro": [-15.65, -42.25],
+            "Divisa Alegre": [-15.71, -41.33],
+            "Engenheiro Navarro": [-17.28, -43.95],
+            "Espinosa": [-14.92, -42.81],
+            "Francisco Dumont": [-17.30, -44.23],
+            "Francisco Sá": [-16.47, -43.48],
+            "Fruta de Leite": [-16.16, -42.53],
+            "Gameleiras": [-15.25, -43.06],
+            "Glaucilândia": [-16.80, -43.78],
+            "Grão Mogol": [-16.56, -42.89],
+            "Guaraciama": [-17.20, -43.98],
+            "Ibiaí": [-16.85, -44.91],
+            "Ibiracatu": [-15.58, -44.22],
+            "Icaraí de Minas": [-16.18, -44.90],
+            "Indaiabira": [-15.48, -42.60],
+            "Itacambira": [-17.06, -43.30],
+            "Itacarambi": [-15.10, -44.09],
+            "Jaíba": [-15.34, -43.67],
+            "Janaúba": [-15.80, -43.30],
+            "Januária": [-15.48, -44.36],
+            "Japonvar": [-16.03, -44.33],
+            "Jequitaí": [-17.23, -44.43],
+            "Josenópolis": [-16.48, -42.50],
+            "Juramento": [-16.83, -43.58],
+            "Juvenília": [-14.37, -44.15],
+            "Lagoa dos Patos": [-16.98, -44.58],
+            "Lontra": [-15.90, -44.28],
+            "Luislândia": [-16.08, -44.65],
+            "Mamonas": [-15.05, -43.08],
+            "Manga": [-14.75, -43.93],
+            "Matias Cardoso": [-14.85, -43.91],
+            "Mato Verde": [-15.39, -42.86],
+            "Mirabela": [-16.26, -44.16],
+            "Miravânia": [-14.45, -44.17],
+            "Montalvânia": [-14.42, -44.36],
+            "Monte Azul": [-15.15, -42.87],
+            "Montes Claros": [-16.72, -43.86],
+            "Montezuma": [-15.16, -42.50],
+            "Ninheira": [-15.75, -42.55],
+            "Nova Porteirinha": [-15.80, -43.28],
+            "Novorizonte": [-15.68, -41.78],
+            "Olhos-d'Água": [-17.23, -43.56],
+            "Padre Carvalho": [-16.30, -42.51],
+            "Pai Pedro": [-15.53, -43.20],
+            "Patis": [-16.10, -44.18],
+            "Pedras de Maria da Cruz": [-15.60, -44.38],
+            "Pintópolis": [-16.05, -45.15],
+            "Pirapora": [-17.34, -44.94],
+            "Ponto Chique": [-16.21, -44.88],
+            "Porteirinha": [-15.73, -43.02],
+            "Riacho dos Machados": [-16.03, -43.05],
+            "Rio Pardo de Minas": [-15.61, -42.53],
+            "Rubelita": [-16.38, -42.28],
+            "Salinas": [-16.17, -42.29],
+            "Santa Cruz de Salinas": [-16.11, -42.15],
+            "Santo Antônio do Retiro": [-15.35, -42.58],
+            "São Francisco": [-16.15, -44.86],
+            "São João da Lagoa": [-16.78, -44.15],
+            "São João da Ponte": [-15.93, -44.00],
+            "São João das Missões": [-14.88, -44.13],
+            "São João do Pacuí": [-16.71, -44.15],
+            "São João do Paraíso": [-15.31, -42.01],
+            "Serranópolis de Minas": [-15.78, -42.96],
+            "Taiobeiras": [-15.80, -42.22],
+            "Turmalina": [-17.28, -42.73],
+            "Ubaí": [-16.22, -44.80],
+            "Vargem Grande do Rio Pardo": [-15.45, -42.31],
+            "Varzelândia": [-15.70, -44.02],
+            "Verdelândia": [-15.40, -43.70],
+            "Veredinha": [-17.38, -42.73]
+        };
 
         if (window.supabase && window.supabase.createClient) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -531,6 +647,7 @@
             data: { stock: [], users: [], deals: [], clients: [] },
             user: null,
             dragId: null,
+            map: null, // INSTÂNCIA DO MAPA
 
             init: async () => {
                 if (!supabaseClient) {
@@ -639,6 +756,153 @@
                 if(tab === 'agenda') APP.renderAgenda();
                 if(tab === 'vendas') APP.renderCatalog(); 
                 if(tab === 'dashboard') APP.renderGoals(); 
+                if(tab === 'mapa') setTimeout(APP.renderMap, 200); // Pequeno delay para renderizar o container primeiro
+            },
+
+            // --- LÓGICA DO MAPA (LEAFLET + VIEW SIMULADA) ---
+            renderMap: async () => {
+                const container = document.getElementById('map');
+                if(!container) return;
+
+                // 1. Inicializa Mapa se não existir
+                if(!APP.map) {
+                    // Centro de Minas Gerais (Foco em Montes Claros/Norte)
+                    APP.map = L.map('map').setView([-16.7289, -43.8617], 7); 
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(APP.map);
+                }
+                
+                // Forçar resize para evitar erro de container cinza
+                APP.map.invalidateSize();
+
+                // 2. Limpar camadas anteriores (exceto tile layer)
+                APP.map.eachLayer((layer) => {
+                    if (layer instanceof L.CircleMarker) {
+                        APP.map.removeLayer(layer);
+                    }
+                });
+
+                // 3. Simulação da VIEW SQL: Agregação de Dados
+                // Vendas Ganhas -> Join Clientes -> Group By Cidade/Vendedor
+                const aggregatedData = APP.aggregateSalesByCity();
+
+                if (aggregatedData.length === 0) {
+                    APP.toast("Nenhuma venda com status 'Ganho' localizada.");
+                    return;
+                }
+
+                // 4. Plotar no Mapa
+                const legendEl = document.getElementById('map-legend');
+                legendEl.innerHTML = '<strong>Legenda (Vendedores)</strong>';
+                const sellersSet = new Set();
+
+                aggregatedData.forEach(item => {
+                    if (!item.lat || !item.lng) return;
+
+                    const color = APP.stringToColor(item.seller);
+                    sellersSet.add(item.seller);
+
+                    // Raio proporcional à raiz do valor (para não ficar gigante)
+                    const radius = Math.sqrt(item.total_value) / 60; 
+                    const safeRadius = Math.max(radius, 5); // Mínimo 5px
+
+                    const marker = L.circleMarker([item.lat, item.lng], {
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.6,
+                        radius: safeRadius
+                    }).addTo(APP.map);
+
+                    const tooltipContent = `
+                        <div style="text-align:center;">
+                            <strong>${item.city}</strong><br>
+                            <span style="font-size:11px">Vendedor: ${item.seller}</span><br>
+                            <span style="font-size:12px; font-weight:bold; color:#059669">
+                                ${item.total_value.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}
+                            </span><br>
+                            <small>${item.count} vendas</small>
+                        </div>
+                    `;
+
+                    marker.bindTooltip(tooltipContent);
+                });
+
+                // 5. Montar Legenda
+                sellersSet.forEach(seller => {
+                    const color = APP.stringToColor(seller);
+                    legendEl.innerHTML += `
+                        <div class="legend-item">
+                            <div class="legend-color" style="background:${color}"></div>
+                            <span>${seller}</span>
+                        </div>
+                    `;
+                });
+            },
+
+            aggregateSalesByCity: () => {
+                // Filtra apenas vendas ganhas
+                const wonDeals = APP.data.deals.filter(d => d.stage === 'ganho');
+                const agg = {};
+
+                wonDeals.forEach(deal => {
+                    const client = APP.data.clients.find(c => c.name === deal.client);
+                    
+                    // Extrai cidade do cadastro (ex: "Montes Claros - MG" -> "Montes Claros")
+                    let cityRaw = client ? (client.obs || 'Desconhecido') : 'Desconhecido';
+                    let cityClean = cityRaw.split('-')[0].trim();
+                    
+                    // Normalização para busca (Remove acentos e minúsculas)
+                    const searchKey = APP.removeAccents(cityClean).toUpperCase();
+                    
+                    // Tenta encontrar a coordenada correspondente na lista
+                    let matchedKey = null;
+                    const mapKeys = Object.keys(MG_CITIES_COORDS);
+                    
+                    // Busca insensível a acentos (Ex: "Sao Francisco" acha "São Francisco")
+                    for (let k of mapKeys) {
+                        if (APP.removeAccents(k).toUpperCase() === searchKey) {
+                            matchedKey = k;
+                            break;
+                        }
+                    }
+
+                    if (matchedKey) {
+                        const coords = MG_CITIES_COORDS[matchedKey];
+                        const key = `${matchedKey}_${deal.owner}`;
+                        if (!agg[key]) {
+                            agg[key] = {
+                                city: matchedKey, // Usa o nome oficial da lista
+                                seller: deal.owner,
+                                total_value: 0,
+                                count: 0,
+                                lat: coords[0],
+                                lng: coords[1]
+                            };
+                        }
+                        agg[key].total_value += deal.value;
+                        agg[key].count += 1;
+                    }
+                });
+
+                return Object.values(agg);
+            },
+
+            removeAccents: (str) => {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            },
+
+            stringToColor: (str) => {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                let color = '#';
+                for (let i = 0; i < 3; i++) {
+                    let value = (hash >> (i * 8)) & 0xFF;
+                    color += ('00' + value.toString(16)).substr(-2);
+                }
+                return color;
             },
 
             modal: (id) => document.getElementById(id).classList.add('active'),
@@ -710,7 +974,6 @@
                 APP.user = null; 
             },
 
-            // FUNÇÃO PARA PREPARAR CRIAÇÃO DE USUÁRIO
             prepareUser: () => {
                 document.getElementById('usr-id').value = '';
                 document.getElementById('usr-name').value = '';
@@ -719,51 +982,39 @@
                 APP.modal('modal-user');
             },
 
-            // FUNÇÃO PARA PREPARAR EDIÇÃO DE USUÁRIO
             editUser: (id) => {
                 const u = APP.data.users.find(x => x.id === id);
                 if(!u) return;
-                
                 document.getElementById('usr-id').value = u.id;
                 document.getElementById('usr-name').value = u.name;
                 document.getElementById('usr-role').value = u.role;
                 document.getElementById('usr-goal').value = u.goal ? u.goal.toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
-                
                 APP.modal('modal-user');
             },
 
             saveUser: async (e) => {
                 e.preventDefault();
-                
                 if (APP.user.role !== 'gestor') {
                     return alert("Acesso negado: Apenas gestores podem gerenciar membros.");
                 }
-
                 const id = document.getElementById('usr-id').value;
-                
                 const userData = { 
                     name: document.getElementById('usr-name').value, 
                     role: document.getElementById('usr-role').value,
                     goal: APP.parseMoney(document.getElementById('usr-goal').value)
                 };
-
                 let pwd = null;
                 if (!id) {
-                    // Novo Usuário: Pedir senha obrigatória ou opcional
                     pwd = prompt("Defina uma senha para este usuário (Opcional - Deixe em branco para sem senha):");
                     userData.password = pwd || null;
-                    
                     const { data, error } = await supabaseClient.from('users').insert(userData).select();
                     if(error) return alert("Erro ao criar usuário: " + error.message);
                     APP.refreshLocal('users', data[0]);
-                    
                 } else {
-                    // Edição: Mantém a senha existente (não pergunta nada)
                     const { data, error } = await supabaseClient.from('users').update(userData).eq('id', id).select();
                     if(error) return alert("Erro ao atualizar usuário: " + error.message);
                     APP.refreshLocal('users', data[0]);
                 }
-                
                 APP.closeModals();
                 APP.toast('Usuário salvo!');
             },
@@ -774,7 +1025,6 @@
 
             renderUsers: () => {
                 const isGestor = APP.user && APP.user.role === 'gestor';
-
                 document.querySelector('#table-users tbody').innerHTML = APP.data.users.map(u => {
                     let actionBtns = '';
                     if (isGestor) {
@@ -783,14 +1033,12 @@
                             <button class="btn btn-small btn-danger" onclick="APP.deleteUser(${u.id})">×</button>
                         `;
                     }
-                    
                     const goalDisplay = u.goal ? u.goal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) : '-';
                     return `<tr><td>${u.name}</td><td>${u.role}</td><td>${goalDisplay}</td><td>${actionBtns}</td></tr>`;
                 }).join('');
                 
                 const tbPerf = document.querySelector('#table-performance tbody');
                 let ranking = [];
-
                 tbPerf.innerHTML = APP.data.users.map(u => {
                     const userDeals = APP.data.deals.filter(d => d.owner === u.name);
                     const open = userDeals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido').length;
@@ -799,11 +1047,9 @@
                     const totalSales = wonDeals.reduce((a, b) => a + b.value, 0);
                     const totalDeals = userDeals.length;
                     const conversion = totalDeals > 0 ? ((wonCount / totalDeals) * 100).toFixed(1) : '0.0';
-
                     if (u.role !== 'gestor') {
                         ranking.push({name: u.name, total: totalSales});
                     }
-
                     return `<tr><td>${u.name}</td><td>${open}</td><td>${wonCount}</td><td><b>${conversion}%</b></td><td>${totalDeals}</td></tr>`;
                 }).join('');
 
@@ -822,18 +1068,14 @@
             renderGoals: () => {
                 const container = document.getElementById('goals-container');
                 if(!container) return;
-
                 const sellers = APP.data.users.filter(u => u.role === 'vendedor' && u.goal > 0);
-                
                 if (sellers.length === 0) {
                     container.innerHTML = '<div style="color:#6b7280; font-size:12px;">Nenhuma meta definida. Cadastre uma meta para os vendedores na aba "Equipe".</div>';
                     return;
                 }
-
                 const now = new Date();
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
-
                 let html = '';
                 sellers.forEach(u => {
                     const currentSales = APP.data.deals
@@ -867,48 +1109,34 @@
                 container.innerHTML = html;
             },
 
-            // NOVA FUNÇÃO: RENDERIZAR O CATÁLOGO
             renderCatalog: () => {
                 if (!APP.user) return; 
-
                 const tbody = document.querySelector('#table-catalog tbody');
                 const thead = document.querySelector('#table-catalog thead');
                 if(!tbody || !thead) return;
-
                 const term = document.getElementById('search-catalog') ? document.getElementById('search-catalog').value.toLowerCase() : '';
-                
                 const isGestor = APP.user.role === 'gestor';
                 const isAssistente = APP.user.role === 'assistente';
                 const canEdit = isGestor || isAssistente;
-
-                // Define cabeçalhos
                 if (canEdit) {
                     thead.innerHTML = `<tr><th>Modelo</th><th>Status</th><th>Custo (R$)</th><th style="width:140px">Preço Venda (R$)</th><th style="width:140px">Preço Promo (R$)</th><th>Margem Est.</th></tr>`;
                 } else {
                     thead.innerHTML = `<tr><th>Modelo</th><th>Status</th><th>Preço</th></tr>`;
                 }
-
                 let items = APP.data.stock.filter(s => s.status !== 'Vendido'); 
                 items.sort((a,b) => a.model.localeCompare(b.model));
-
                 let html = '';
                 items.forEach(s => {
                     if (term && !s.model.toLowerCase().includes(term)) return;
-
                     const cost = s.cost || 0;
                     const sale = s.sale_price || 0;
                     const promo = s.promo_price || 0;
-                    
                     let statusBadgeClass = 'badge-success';
                     if (s.status === 'Reservado') statusBadgeClass = 'badge-warning';
-
                     if (canEdit) {
-                        // Cálculo da margem para o gestor
-                        // Se houver preço promocional, usa ele para o calculo da margem exibida, senão usa o preço normal
                         const activePrice = promo > 0 ? promo : sale;
                         const marginVal = activePrice - cost;
                         const marginColor = marginVal >= 0 ? '#10b981' : '#ef4444';
-                        
                         html += `
                             <tr>
                                 <td><b>${s.model}</b><br><small style="color:#9ca3af">${s.mono || ''}</small></td>
@@ -936,7 +1164,6 @@
                             </tr>
                         `;
                     } else {
-                        // Visão do Vendedor
                         let priceDisplay = '';
                         if (promo > 0) {
                             priceDisplay = `
@@ -948,57 +1175,34 @@
                         } else {
                             priceDisplay = `<span style="color:#9ca3af; font-style:italic;">Sob Consulta</span>`;
                         }
-
-                        html += `
-                            <tr>
-                                <td><b>${s.model}</b><br><small style="color:#9ca3af">${s.mono || ''}</small></td>
-                                <td><span class="badge ${statusBadgeClass}">${s.status}</span></td>
-                                <td>${priceDisplay}</td>
-                            </tr>
-                        `;
+                        html += `<tr><td><b>${s.model}</b><br><small style="color:#9ca3af">${s.mono || ''}</small></td><td><span class="badge ${statusBadgeClass}">${s.status}</span></td><td>${priceDisplay}</td></tr>`;
                     }
                 });
-
                 if (!html) html = `<tr><td colspan="${canEdit ? 6 : 3}" style="text-align:center; padding:20px; color:#9ca3af">Nenhum item no catálogo.</td></tr>`;
                 tbody.innerHTML = html;
             },
 
-            // ATUALIZAR PREÇO NO BANCO (GESTÃO DE PREÇOS)
             saveCatalogPrice: async (id, field, value) => {
                 const valNum = APP.parseMoney(value);
-                
-                // Atualiza localmente para refletir sem refresh
                 const itemIndex = APP.data.stock.findIndex(s => s.id === id);
-                if (itemIndex > -1) {
-                    APP.data.stock[itemIndex][field] = valNum;
-                }
-
-                // Atualiza no banco
+                if (itemIndex > -1) { APP.data.stock[itemIndex][field] = valNum; }
                 const { error } = await supabaseClient.from('stock').update({ [field]: valNum }).eq('id', id);
-                
                 if (error) {
-                    // Fallback para erro caso a coluna não exista ainda
                     console.error("Erro ao salvar preço:", error);
-                    alert("Atenção: Não foi possível salvar. Verifique se as colunas 'sale_price' e 'promo_price' foram criadas no banco de dados.");
+                    alert("Atenção: Não foi possível salvar. Verifique se as colunas 'sale_price' e 'promo_price' foram criadas no banco.");
                 } else {
                     APP.toast("Preço atualizado!");
                 }
             },
 
-            // CALCULAR MARGEM VISUALMENTE (DURANTE A DIGITAÇÃO)
             calcMarginDisplay: (input, id, cost, type) => {
                 const val = APP.parseMoney(input.value);
                 const item = APP.data.stock.find(s => s.id === id);
                 if (!item) return;
-
-                // Pega o outro valor (se estou editando sale, pego promo atual e vice-versa) para saber qual é o "ativo"
                 let sale = type === 'sale' ? val : (item.sale_price || 0);
                 let promo = type === 'promo' ? val : (item.promo_price || 0);
-
-                // Regra: Se tem promo > 0, a margem é sobre a promo
                 const activePrice = promo > 0 ? promo : sale;
                 const margin = activePrice - cost;
-                
                 const el = document.getElementById('margin-'+id);
                 if (el) {
                     el.innerText = margin.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
@@ -1007,10 +1211,7 @@
             },
 
             deleteUser: async (id) => {
-                if (APP.user.role !== 'gestor') {
-                    return alert("Acesso negado: Apenas gestores podem remover membros.");
-                }
-
+                if (APP.user.role !== 'gestor') return alert("Acesso negado.");
                 if(confirm('Excluir usuário?')) {
                     const { error } = await supabaseClient.from('users').delete().eq('id', id);
                     if(error) return alert("Erro: " + error.message);
@@ -1221,8 +1422,7 @@
             toggleStock: () => document.getElementById('div-stock-select').style.display = document.getElementById('deal-type').value === 'consorcio' ? 'none' : 'block',
 
             renderStock: () => {
-                if (!APP.user) return; // FIX: Previne erro ao iniciar sem utilizador
-
+                if (!APP.user) return; 
                 const term = document.getElementById('search-stock').value.toLowerCase();
                 const tbody = document.querySelector('#table-stock tbody');
                 const tbodySold = document.querySelector('#table-stock-sold tbody');
@@ -1274,14 +1474,17 @@
                 const dl = document.getElementById('list-clients');
                 dl.innerHTML = APP.data.clients.map(c => `<option value="${c.name}">`).join('');
                 
-                // --- NOVA LÓGICA DE SELEÇÃO DE VENDEDOR ---
+                // NOVO: Preenche a datalist de cidades com a lista completa
+                const cityDl = document.getElementById('list-cities-mg');
+                cityDl.innerHTML = Object.keys(MG_CITIES_COORDS).sort().map(city => `<option value="${city}">`).join('');
+                document.getElementById('deal-city').value = ''; // Limpa campo de cidade
+
                 const isGestorOrAssistente = ['gestor', 'assistente'].includes(APP.user.role);
                 const ownerSelect = document.getElementById('deal-owner');
                 const ownerDiv = document.getElementById('div-deal-owner');
 
                 if (isGestorOrAssistente) {
                     ownerDiv.style.display = 'block';
-                    // Lista todos os usuários, mas pode filtrar por role='vendedor' se preferir
                     ownerSelect.innerHTML = APP.data.users
                         .map(u => `<option value="${u.name}" ${u.name === APP.user.name ? 'selected' : ''}>${u.name}</option>`)
                         .join('');
@@ -1289,8 +1492,6 @@
                     ownerDiv.style.display = 'none';
                     ownerSelect.innerHTML = `<option value="${APP.user.name}" selected>${APP.user.name}</option>`;
                 }
-                // --- FIM DA NOVA LÓGICA ---
-
                 APP.modal('modal-deal');
             },
 
@@ -1299,7 +1500,6 @@
                 const id = document.getElementById('deal-id').value;
                 const stockId = document.getElementById('deal-stock').value || null; 
                 
-                // --- LÊ O DONO SELECIONADO OU USA O PADRÃO ---
                 const selectedOwner = document.getElementById('deal-owner').value;
                 const finalOwner = selectedOwner || APP.user.name;
 
@@ -1308,11 +1508,32 @@
                     source: document.getElementById('deal-source').value,
                     value: APP.parseMoney(document.getElementById('deal-value').value),
                     stock_id: stockId,
-                    deal_type: document.getElementById('deal-type').value, // Tenta salvar o tipo
+                    deal_type: document.getElementById('deal-type').value, 
                     next_date: document.getElementById('deal-next-date').value || null,
                     next_desc: document.getElementById('deal-next-desc').value,
-                    owner: finalOwner // Usa o dono selecionado
+                    owner: finalOwner 
                 };
+
+                // NOVO: Atualiza a cidade do cliente se fornecida
+                const cityInput = document.getElementById('deal-city').value;
+                if (cityInput) {
+                    const clientName = dealData.client;
+                    const existingClient = APP.data.clients.find(c => c.name === clientName);
+                    
+                    if (existingClient) {
+                        if (existingClient.obs !== cityInput) {
+                            // Atualiza cliente existente
+                            await supabaseClient.from('clients').update({ obs: cityInput }).eq('id', existingClient.id);
+                            existingClient.obs = cityInput; // Atualiza local
+                        }
+                    } else {
+                        // Cria novo cliente se não existir
+                        const { data: newClient, error: clientErr } = await supabaseClient.from('clients').insert({ name: clientName, obs: cityInput }).select();
+                        if (!clientErr && newClient) {
+                            APP.data.clients.push(newClient[0]);
+                        }
+                    }
+                }
 
                 if (id) {
                     dealData.id = id;
@@ -1362,30 +1583,29 @@
                 const d = APP.data.deals.find(x => x.id === id); 
                 if (!d) return; 
                 APP.prepareDeal(d.stock_id); 
-                
-                // Preenche os dados normais
                 document.getElementById('deal-id').value = d.id; 
                 document.getElementById('deal-client').value = d.client; 
+                
+                // NOVO: Busca e preenche a cidade do cliente
+                const client = APP.data.clients.find(c => c.name === d.client);
+                if (client && client.obs) {
+                    document.getElementById('deal-city').value = client.obs;
+                }
+
                 document.getElementById('deal-source').value = d.source || 'Loja/Passante';
                 document.getElementById('deal-value').value = d.value.toLocaleString('pt-BR', {minimumFractionDigits:2}); 
                 document.getElementById('deal-type').value = d.deal_type || (d.stock_id ? 'maquina' : 'consorcio'); 
                 document.getElementById('deal-next-date').value = d.next_date || ''; 
                 document.getElementById('deal-next-desc').value = d.next_desc || ''; 
-                
-                // Define o dono correto no select (para gestores/assistentes editarem)
                 const ownerSelect = document.getElementById('deal-owner');
                 if (ownerSelect) {
                     ownerSelect.value = d.owner;
                 }
-
                 APP.toggleStock();
             },
 
             deleteDeal: async (id) => {
-                if (APP.user.role !== 'gestor') { 
-                     return alert('Acesso negado: Apenas gestores podem excluir negócios.');
-                }
-
+                if (APP.user.role !== 'gestor') return alert('Acesso negado.');
                 if(confirm('Excluir oportunidade?')) {
                     const deal = APP.data.deals.find(d => d.id === id);
                     const { error } = await supabaseClient.from('deals').delete().eq('id', id);
@@ -1448,7 +1668,7 @@
             },
 
             renderKanban: () => {
-                if (!APP.user) return; // FIX: Previne erro ao iniciar sem utilizador
+                if (!APP.user) return; 
 
                 const cols = [{id:'prospeccao', l:'Prospecção', c:'#3b82f6'},{id:'analise_credito', l:'Análise Crédito', c:'#0ea5e9'},{id:'documentacao', l:'Documentação', c:'#eab308'},{id:'contrato', l:'Contrato', c:'#f97316'},{id:'af', l:'A.F.', c:'#8b5cf6'},{id:'ganho', l:'Ganho', c:'#10b981'},{id:'perdido', l:'Perdido', c:'#374151'}];
                 const container = document.getElementById('kanban-board');
@@ -1485,14 +1705,19 @@
                         let deleteBtn = `<button class="btn-card-icon btn-card-delete" onclick="event.stopPropagation(); APP.deleteDeal('${d.id}')" title="Excluir">🗑️</button>`;
                         if (isAssistente) deleteBtn = '';
 
-                        html += `<div class="card" draggable="true" onclick="APP.editDeal('${d.id}')" ondragstart="APP.dragId='${d.id}'; this.classList.add('dragging')" ondragend="this.classList.remove('dragging')"><div class="card-tags"><span class="tag">👤 ${d.owner}</span><div class="card-btn-group"><button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button>${deleteBtn}</div></div><div style="font-weight:800; margin-bottom:5px;">${d.client}</div><div style="font-weight:700; color:#374151;">${d.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>${actionHtml}</div>`;
+                        // NOVO: Pega a cidade do cliente para mostrar no card
+                        const client = APP.data.clients.find(c => c.name === d.client);
+                        const clientCity = client && client.obs ? client.obs.split('-')[0].trim() : '';
+                        const cityBadge = clientCity ? `<div style="font-size:10px; color:#6b7280; font-weight:600; margin-bottom:2px;">📍 ${clientCity}</div>` : '';
+
+                        html += `<div class="card" draggable="true" onclick="APP.editDeal('${d.id}')" ondragstart="APP.dragId='${d.id}'; this.classList.add('dragging')" ondragend="this.classList.remove('dragging')"><div class="card-tags"><span class="tag">👤 ${d.owner}</span><div class="card-btn-group"><button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button>${deleteBtn}</div></div><div style="font-weight:800; margin-bottom:2px;">${d.client}</div>${cityBadge}<div style="font-weight:700; color:#374151;">${d.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>${actionHtml}</div>`;
                     });
                     html += '</div>'; div.innerHTML = html; container.appendChild(div);
                 });
             },
 
             renderAgenda: () => {
-                if (!APP.user) return; // FIX: Previne erro ao iniciar sem utilizador
+                if (!APP.user) return; 
 
                 const container = document.getElementById('agenda-content');
                 if(!container) return;
@@ -1523,14 +1748,11 @@
             },
 
             renderKPIs: () => {
-                if (!APP.user) return; // FIX: Previne erro ao iniciar sem utilizador
+                if (!APP.user) return; 
 
                 const isGestor = APP.user.role === 'gestor';
                 const isAssistente = APP.user.role === 'assistente';
-                
                 const scopeDeals = (isGestor || isAssistente) ? APP.data.deals : APP.data.deals.filter(d => d.owner === APP.user.name);
-                
-                // --- ALTERAÇÃO: FILTRO POR MÊS ATUAL ---
                 const now = new Date();
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
@@ -1541,20 +1763,16 @@
                     const dDate = new Date(d.close_date);
                     return dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear;
                 });
-                // ----------------------------------------
 
                 let totalRevenue = 0;
                 let totalConsorcio = 0;
                 let totalMargin = 0;
 
                 wonDeals.forEach(d => {
-                    // SEPARAÇÃO: Se for consórcio, soma em separado
                     if (d.deal_type === 'consorcio') {
                         totalConsorcio += d.value;
                     } else {
-                        // Se for máquina ou indefinido, soma no faturamento real
                         totalRevenue += d.value;
-                        
                         let cost = 0;
                         if (d.original_cost !== undefined) { cost = d.original_cost; } else if (d.stock_id) {
                             const stockItem = APP.data.stock.find(s => s.id === d.stock_id);
@@ -1566,8 +1784,6 @@
 
                 document.getElementById('lbl-faturamento').innerText = (isGestor || isAssistente) ? "Faturamento (Mês)" : "Meu Faturamento (Mês)";
                 document.getElementById('kpi-total').innerText = totalRevenue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-                
-                // EXIBE O TOTAL DE CONSÓRCIO NO NOVO CARD
                 document.getElementById('kpi-consorcio').innerText = totalConsorcio.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 
                 let marginPct = 0; if (totalRevenue > 0) { marginPct = (totalMargin / totalRevenue) * 100; }
@@ -1579,7 +1795,6 @@
                 document.getElementById('kpi-pipeline').innerText = pipelineValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
                 
                 const gridContainer = document.getElementById('dash-inventory-grid');
-                
                 if (!isGestor && !isAssistente) { gridContainer.innerHTML = ''; return; }
                 
                 const blockedStock = APP.data.stock.filter(s => s.status === 'Reservado');
@@ -1601,7 +1816,7 @@
             },
 
             renderReports: () => {
-                if (!APP.user) return; // FIX: Previne erro ao iniciar sem utilizador
+                if (!APP.user) return; 
 
                 const startStr = document.getElementById('rep-start').value;
                 const endStr = document.getElementById('rep-end').value;
@@ -1612,7 +1827,6 @@
                 const endDate = new Date(endStr).getTime() + 86400000;
                 const tbody = document.querySelector('#table-reports tbody');
                 let html = ''; let totalVal = 0; let count = 0;
-                
                 const isGestor = APP.user.role === 'gestor';
                 const isAssistente = APP.user.role === 'assistente';
 
@@ -1621,10 +1835,8 @@
                     const dealDate = new Date(dealDateStr).getTime();
                     if (d.stage === 'ganho' && dealDate >= startDate && dealDate < endDate) {
                         if (sourceFilter !== 'all' && d.source !== sourceFilter) return;
-                        
                         if (!isGestor && !isAssistente && d.owner !== APP.user.name) return;
                         if ((isGestor || isAssistente) && sellerFilter !== 'all' && d.owner !== sellerFilter) return;
-                        
                         totalVal += d.value; count++;
                         let prodName = 'Consórcio/Serviço'; let cost = 0;
                         if(d.stock_id) { const s = APP.data.stock.find(x => x.id === d.stock_id); if(s) prodName = s.model; }
@@ -1677,7 +1889,6 @@
                 XLSX.writeFile(wb, "YattaCRM_Backup.xlsx"); 
             },
             
-            // ATUALIZAÇÃO: ADICIONADAS NOVAS FUNÇÕES NO RENDERALL
             renderAll: () => { 
                 APP.renderStock(); 
                 APP.renderKanban(); 
@@ -1685,8 +1896,8 @@
                 APP.renderKPIs(); 
                 APP.renderClients(); 
                 APP.renderAgenda(); 
-                APP.renderCatalog(); // NOVA TABELA DE CATÁLOGO (SUBSTITUI SALES TABLE)
-                APP.renderGoals(); // NOVO WIDGET DE METAS
+                APP.renderCatalog(); 
+                APP.renderGoals(); 
             },
         };
 
