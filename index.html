@@ -67,7 +67,7 @@
         /* CARDS DE INVENTÁRIO */
         .inventory-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .inv-card { background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; position: relative; overflow: hidden;}
-        .inv-card.critical { border-color: #ef4444; background: #fff5f5; }
+        .inv-card.critical { border-color: #ef4444; background: #fff5f5; border-top: 4px solid #ef4444; }
         .inv-card.blocked { border-color: #f59e0b; background: #fffbeb; } 
         .inv-label { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #6b7280; margin-bottom: 5px; }
         .inv-value { font-size: 18px; font-weight: 900; color: #111827; }
@@ -216,6 +216,7 @@
         <nav class="nav-menu">
             <button onclick="APP.nav('dashboard')" id="btn-dashboard" class="nav-item active">📊 Dashboard</button>
             <button onclick="APP.nav('mapa')" id="btn-mapa" class="nav-item">🗺️ Mapa MG</button>
+            <button onclick="APP.nav('diretoria')" id="btn-diretoria" class="nav-item gestor-ctrl">🏛️ Diretoria</button>
             <button onclick="APP.nav('vendas')" id="btn-vendas" class="nav-item">💰 Catálogo</button>
             <button onclick="APP.nav('agenda')" id="btn-agenda" class="nav-item">📅 Agenda</button>
             <button onclick="APP.nav('funil')" id="btn-funil" class="nav-item">⚡ Funil</button>
@@ -237,7 +238,7 @@
                 <button class="btn-hamburger" onclick="APP.toggleMenu()">☰</button>
                 <h2 id="page-title">DASHBOARD</h2>
             </div>
-            <button onclick="APP.exportData()" class="btn btn-dark" style="font-size:10px;">💾 Backup (Excel)</button>
+            <button id="btn-global-backup" onclick="APP.exportData()" class="btn btn-dark" style="font-size:10px;">💾 Backup (Excel)</button>
         </header>
 
         <div class="viewport">
@@ -289,6 +290,47 @@
                             <div id="map"></div>
                             <div id="map-legend" class="map-legend"></div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABA DIRETORIA -->
+            <section id="tab-diretoria" class="tab-content">
+                <div class="grid-stats">
+                    <div class="card-stat" style="border-top-color:#111827"><label>Capital Imobilizado</label><div id="dir-total-stock" class="value">R$ 0,00</div></div>
+                    <div class="card-stat" style="border-top-color:#10b981"><label>Faturamento Mensal</label><div id="dir-total-won" class="value">R$ 0,00</div></div>
+                    <div class="card-stat" style="border-top-color:#8b5cf6"><label>Volume em Carteira</label><div id="dir-total-pipeline" class="value">R$ 0,00</div></div>
+                    <div class="card-stat" style="border-top-color:#059669"><label>Liquidação de Críticos (Mês)</label><div id="dir-critical-recovery-top" class="value">R$ 0,00</div></div>
+                </div>
+
+                <div class="grid-2-col">
+                    <div class="data-card">
+                        <div class="data-card-header">Mix de Vendas (Mensal)</div>
+                        <div class="table-responsive">
+                            <table id="table-dir-mix">
+                                <thead><tr><th>Categoria</th><th>Qtd</th><th>Valor Total</th><th>Margem Média</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="data-card">
+                        <div class="data-card-header">Volume em Carteira por Vendedor</div>
+                        <div class="table-responsive">
+                            <table id="table-dir-pipeline-sellers">
+                                <thead><tr><th>Vendedor</th><th>Qtd Oport.</th><th>Valor Total</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <div class="data-card-header" style="background:#991b1b; color:#fff;">⚠️ Alerta: Itens Críticos em Stock (>365 dias)</div>
+                    <div class="table-responsive">
+                        <table id="table-dir-critical">
+                            <thead><tr><th>Modelo</th><th>Chassi</th><th>Data Entrada</th><th>Dias</th><th>Custo</th><th>Vendedor Resp.</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
                     </div>
                 </div>
             </section>
@@ -346,6 +388,9 @@
 
             <!-- ABA ESTOQUE -->
             <section id="tab-estoque" class="tab-content">
+                <!-- Dashboard Executivo de Estoque -->
+                <div id="stock-exec-dash" class="inventory-panel-grid gestor-ctrl" style="margin-bottom: 25px;"></div>
+
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                     <input type="text" id="search-stock" onkeyup="APP.renderStock()" placeholder="Buscar..." style="padding: 10px; flex: 1; border-radius: 6px; border: 1px solid #d1d5db;">
                     <input type="file" id="file-import" style="display:none" onchange="APP.importStock(event)">
@@ -526,6 +571,7 @@
                         <option value="vendedor">Vendedor</option>
                         <option value="assistente">Assistente</option>
                         <option value="gestor">Gestor</option>
+                        <option value="diretoria_restrita">Diretoria (Somente Visão Estratégica)</option>
                     </select>
                 </div>
                 <div class="form-item"><label>Meta Mensal (R$)</label><input id="usr-goal" oninput="APP.maskMoney(this)" placeholder="0,00"></div>
@@ -677,9 +723,8 @@
                 APP.data.stock = stockReq.data || [];
                 APP.data.deals = dealsReq.data || [];
 
-                if (APP.data.users.length === 0) {
-                    await APP.ensureDefaultUser();
-                }
+                // Garantir usuários iniciais
+                await APP.ensureDefaultUser();
 
                 const now = new Date();
                 const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -694,12 +739,24 @@
             },
 
             ensureDefaultUser: async () => {
-                const defaultUser = {name: 'Gestor Inicial', role: 'gestor'}; 
-                const { data, error } = await supabaseClient.from('users').insert(defaultUser).select();
-                if (!error && data) {
-                    APP.data.users.push(data[0]);
-                } else {
-                    APP.data.users.push(defaultUser);
+                let hasGestor = APP.data.users.some(u => u.role === 'gestor');
+                let hasDiretoria = APP.data.users.some(u => u.name === 'DIRETORIA');
+
+                if (!hasGestor) {
+                    const { data } = await supabaseClient.from('users').insert({name: 'Gestor Inicial', role: 'gestor'}).select();
+                    if(data) APP.data.users.push(data[0]);
+                }
+
+                if (!hasDiretoria) {
+                    const { data } = await supabaseClient.from('users').insert({
+                        name: 'DIRETORIA', 
+                        role: 'diretoria_restrita', 
+                        password: 'yatta'
+                    }).select();
+                    if(data) {
+                        APP.data.users.push(data[0]);
+                        APP.renderUserSelect();
+                    }
                 }
             },
 
@@ -745,6 +802,11 @@
             },
 
             nav: (tab) => {
+                // Bloqueio de navegação para Diretoria Restrita
+                if (APP.user && APP.user.role === 'diretoria_restrita' && tab !== 'diretoria') {
+                    return; 
+                }
+
                 document.getElementById('sidebar').classList.remove('open');
                 document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -764,6 +826,7 @@
                 if(tab === 'agenda') APP.renderAgenda();
                 if(tab === 'vendas') APP.renderCatalog(); 
                 if(tab === 'dashboard') APP.renderGoals(); 
+                if(tab === 'diretoria') APP.renderDiretoria();
                 if(tab === 'mapa') setTimeout(APP.renderMap, 200);
             },
 
@@ -937,31 +1000,53 @@
                 
                 const isGestor = APP.user.role === 'gestor';
                 const isAssistente = APP.user.role === 'assistente';
+                const isDiretoriaRestrita = APP.user.role === 'diretoria_restrita';
+                
                 const gestorBtns = document.querySelectorAll('.gestor-ctrl');
                 const adminBtns = document.querySelectorAll('.admin-only');
-                
-                gestorBtns.forEach(btn => {
-                    if (isGestor || isAssistente) {
-                        btn.style.setProperty('display', 'inline-flex', 'important');
-                        btn.classList.add('show-gestor');
-                    } else {
-                        btn.style.setProperty('display', 'none', 'important');
-                        btn.classList.remove('show-gestor');
-                    }
-                });
+                const allNavItems = document.querySelectorAll('.nav-item');
+                const backupBtn = document.getElementById('btn-global-backup');
 
-                adminBtns.forEach(btn => {
-                    if (isGestor) {
-                        btn.style.setProperty('display', 'inline-flex', 'important');
-                    } else {
-                        btn.style.setProperty('display', 'none', 'important');
-                    }
-                });
+                // Lógica de Interface para Diretoria Restrita
+                if (isDiretoriaRestrita) {
+                    allNavItems.forEach(btn => {
+                        if (btn.id === 'btn-diretoria') {
+                            btn.style.display = 'flex';
+                            btn.classList.add('show-gestor');
+                        } else {
+                            btn.style.display = 'none';
+                        }
+                    });
+                    backupBtn.style.display = 'none';
+                    APP.nav('diretoria');
+                } else {
+                    // Lógica normal para outros usuários
+                    backupBtn.style.display = 'inline-flex';
+                    allNavItems.forEach(btn => btn.style.display = 'flex');
+
+                    gestorBtns.forEach(btn => {
+                        if (isGestor || isAssistente) {
+                            btn.style.setProperty('display', 'inline-flex', 'important');
+                            btn.classList.add('show-gestor');
+                        } else {
+                            btn.style.setProperty('display', 'none', 'important');
+                            btn.classList.remove('show-gestor');
+                        }
+                    });
+
+                    adminBtns.forEach(btn => {
+                        if (isGestor) {
+                            btn.style.setProperty('display', 'inline-flex', 'important');
+                        } else {
+                            btn.style.setProperty('display', 'none', 'important');
+                        }
+                    });
+                }
                 
                 const filter = document.getElementById('filter-user');
                 const sellerFilter = document.getElementById('rep-seller'); 
 
-                if(isGestor || isAssistente) {
+                if(isGestor || isAssistente || isDiretoriaRestrita) {
                     filter.style.display = 'block';
                     filter.innerHTML = '<option value="all">Ver Todos</option>';
                     sellerFilter.innerHTML = '<option value="all">Todos</option>'; 
@@ -1029,7 +1114,7 @@
             },
 
             renderUserSelect: () => { 
-                document.getElementById('user-list-grid').innerHTML = APP.data.users.map(u => `<div class="user-select-card" onclick="APP.login('${u.name}')"><div style="font-weight:900;">${u.name}</div><div style="font-size:10px; color:#9ca3af; text-transform:uppercase;">${u.role}</div></div>`).join(''); 
+                document.getElementById('user-list-grid').innerHTML = APP.data.users.map(u => `<div class="user-select-card" onclick="APP.login('${u.name}')"><div style="font-weight:900;">${u.name}</div><div style="font-size:10px; color:#9ca3af; text-transform:uppercase;">${u.role.replace('_', ' ')}</div></div>`).join(''); 
             },
 
             renderUsers: () => {
@@ -1043,7 +1128,7 @@
                         `;
                     }
                     const goalDisplay = u.goal ? u.goal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}) : '-';
-                    return `<tr><td>${u.name}</td><td>${u.role}</td><td>${goalDisplay}</td><td>${actionBtns}</td></tr>`;
+                    return `<tr><td>${u.name}</td><td>${u.role.replace('_', ' ')}</td><td>${goalDisplay}</td><td>${actionBtns}</td></tr>`;
                 }).join('');
                 
                 const tbPerf = document.querySelector('#table-performance tbody');
@@ -1056,7 +1141,7 @@
                     const totalSales = wonDeals.reduce((a, b) => a + b.value, 0);
                     const totalDeals = userDeals.length;
                     const conversion = totalDeals > 0 ? ((wonCount / totalDeals) * 100).toFixed(1) : '0.0';
-                    if (u.role !== 'gestor') {
+                    if (u.role !== 'gestor' && u.role !== 'diretoria_restrita') {
                         ranking.push({name: u.name, total: totalSales});
                     }
                     return `<tr><td>${u.name}</td><td>${open}</td><td>${wonCount}</td><td><b>${conversion}%</b></td><td>${totalDeals}</td></tr>`;
@@ -1435,10 +1520,51 @@
                 const term = document.getElementById('search-stock').value.toLowerCase();
                 const tbody = document.querySelector('#table-stock tbody');
                 const tbodySold = document.querySelector('#table-stock-sold tbody');
+                const execDash = document.getElementById('stock-exec-dash');
+                
                 if(!tbody) return;
                 let htmlBuffer = ''; let htmlSold = '';
                 const isGestor = APP.user.role === 'gestor';
                 const isAssistente = APP.user.role === 'assistente';
+
+                // Cálculos Executivos
+                const availableItems = APP.data.stock.filter(s => s.status !== 'Vendido');
+                const totalCapital = availableItems.reduce((a, b) => a + b.cost, 0);
+                const totalPotentialMargin = availableItems.reduce((a, b) => {
+                    const price = b.promo_price || b.sale_price || 0;
+                    return a + (price > 0 ? (price - b.cost) : 0);
+                }, 0);
+                
+                let sumDays = 0;
+                let criticalCapital = 0;
+                availableItems.forEach(s => {
+                    const days = APP.daysDiff(new Date(s.date_entry || Date.now()).getTime());
+                    sumDays += days;
+                    if (days > 365) criticalCapital += s.cost;
+                });
+                const avgAge = availableItems.length > 0 ? Math.round(sumDays / availableItems.length) : 0;
+                const obsolescenceRate = totalCapital > 0 ? ((criticalCapital / totalCapital) * 100).toFixed(1) : 0;
+
+                if (isGestor || isAssistente) {
+                    execDash.innerHTML = `
+                        <div class="inv-card">
+                            <div class="inv-label">💰 Valor Total Imobilizado</div>
+                            <div class="inv-value">${totalCapital.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div>
+                        </div>
+                        <div class="inv-card">
+                            <div class="inv-label">📈 Margem Bruta Estimada</div>
+                            <div class="inv-value" style="color:#059669">${totalPotentialMargin.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div>
+                        </div>
+                        <div class="inv-card">
+                            <div class="inv-label">⏳ Idade Média do Estoque</div>
+                            <div class="inv-value">${avgAge} dias</div>
+                        </div>
+                        <div class="inv-card critical">
+                            <div class="inv-label">🚨 Capital Crítico (>365d)</div>
+                            <div class="inv-value">${criticalCapital.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})} <small style="font-size:10px; opacity:0.7">(${obsolescenceRate}%)</small></div>
+                        </div>
+                    `;
+                }
 
                 APP.data.stock.forEach(s => {
                     if (s.model.toLowerCase().includes(term) || (s.mono && s.mono.toLowerCase().includes(term))) {
@@ -1477,6 +1603,100 @@
                 if(tbodySold) tbodySold.innerHTML = htmlSold || '<tr><td colspan="6" style="text-align:center; padding:15px; color:#9ca3af;">Nenhum item vendido ou arquivado.</td></tr>';
             },
 
+            renderDiretoria: () => {
+                if (!APP.user) return;
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+
+                // 1. Stock Data
+                const availableItems = APP.data.stock.filter(s => s.status !== 'Vendido');
+                const totalStockCost = availableItems.reduce((a, b) => a + b.cost, 0);
+                const criticalItems = availableItems.filter(s => APP.daysDiff(new Date(s.date_entry || Date.now()).getTime()) > 365);
+                
+                // 2. Sales Data (Current Month)
+                const monthWonDeals = APP.data.deals.filter(d => {
+                    if (d.stage !== 'ganho' || !d.close_date) return false;
+                    const dDate = new Date(d.close_date);
+                    return dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear;
+                });
+
+                const faturamentoTotal = monthWonDeals.reduce((a, b) => a + b.value, 0);
+                
+                // 3. Pipeline Data
+                const pipelineDeals = APP.data.deals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido');
+                const totalPipelineValue = pipelineDeals.reduce((a, b) => a + b.value, 0);
+
+                // Carteira por Vendedor
+                const sellerPipeline = {};
+                APP.data.users.forEach(u => sellerPipeline[u.name] = { qty: 0, val: 0 });
+                pipelineDeals.forEach(d => {
+                    if (!sellerPipeline[d.owner]) sellerPipeline[d.owner] = { qty: 0, val: 0 };
+                    sellerPipeline[d.owner].qty++;
+                    sellerPipeline[d.owner].val += d.value;
+                });
+
+                // Mix de Vendas
+                const mix = {
+                    'Trator': { qty: 0, val: 0, margin: 0 },
+                    'Implemento': { qty: 0, val: 0, margin: 0 },
+                    'Consórcio': { qty: 0, val: 0, margin: 0 }
+                };
+
+                let criticalRecovery = 0;
+
+                monthWonDeals.forEach(d => {
+                    let cat = 'Consórcio';
+                    let cost = d.original_cost || 0;
+
+                    if (d.deal_type !== 'consorcio' && d.stock_id) {
+                        const s = APP.data.stock.find(x => x.id === d.stock_id);
+                        if (s) {
+                            cat = s.type === 'Trator' ? 'Trator' : (s.type === 'Implemento' ? 'Implemento' : 'Outros');
+                            if (!mix[cat]) mix[cat] = { qty: 0, val: 0, margin: 0 };
+                            
+                            // Critical Recovery check
+                            if (s.date_entry) {
+                                const entryToSaleDays = Math.floor((new Date(d.close_date) - new Date(s.date_entry)) / 86400000);
+                                if (entryToSaleDays > 365) criticalRecovery += d.value;
+                            }
+                        }
+                    }
+
+                    if (!mix[cat]) mix[cat] = { qty: 0, val: 0, margin: 0 };
+                    mix[cat].qty++;
+                    mix[cat].val += d.value;
+                    mix[cat].margin += (d.value - cost);
+                });
+
+                // Updates UI Top Cards
+                document.getElementById('dir-total-stock').innerText = totalStockCost.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+                document.getElementById('dir-total-won').innerText = faturamentoTotal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+                document.getElementById('dir-total-pipeline').innerText = totalPipelineValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+                document.getElementById('dir-critical-recovery-top').innerText = criticalRecovery.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
+                // Render Mix Table
+                document.querySelector('#table-dir-mix tbody').innerHTML = Object.entries(mix).map(([cat, data]) => {
+                    const avgMargin = data.val > 0 ? ((data.margin / data.val) * 100).toFixed(1) : 0;
+                    return `<tr><td><b>${cat}</b></td><td>${data.qty}</td><td>${data.val.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td style="color:#059669">${avgMargin}%</td></tr>`;
+                }).join('');
+
+                // Render Pipeline Table per Seller
+                document.querySelector('#table-dir-pipeline-sellers tbody').innerHTML = Object.entries(sellerPipeline)
+                    .filter(([name, data]) => data.qty > 0 && name !== 'DIRETORIA')
+                    .sort((a, b) => b[1].val - a[1].val)
+                    .map(([name, data]) => {
+                        return `<tr><td><b>${name}</b></td><td>${data.qty}</td><td>${data.val.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td></tr>`;
+                    }).join('') || '<tr><td colspan="3" style="text-align:center; padding:15px; color:#9ca3af;">Nenhum lead em carteira.</td></tr>';
+
+                // Render Critical Table
+                document.querySelector('#table-dir-critical tbody').innerHTML = criticalItems.sort((a,b) => b.cost - a.cost).map(s => {
+                    const days = APP.daysDiff(new Date(s.date_entry).getTime());
+                    const deal = APP.data.deals.find(d => d.stock_id === s.id);
+                    return `<tr><td>${s.model}</td><td>${s.mono || '-'}</td><td>${new Date(s.date_entry).toLocaleDateString('pt-BR')}</td><td style="color:#991b1b; font-weight:bold;">${days}</td><td>${s.cost.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td>${deal ? deal.owner : 'Sem Resp.'}</td></tr>`;
+                }).join('') || '<tr><td colspan="6" style="text-align:center; padding:20px; color:#9ca3af">Nenhum item crítico detectado.</td></tr>';
+            },
+
             prepareDeal: (preselectedStockId = null) => {
                 document.getElementById('deal-id').value = '';
                 const sel = document.getElementById('deal-stock'); sel.innerHTML = '<option value="">Sem Máquina</option>';
@@ -1495,6 +1715,7 @@
                 if (isGestorOrAssistente) {
                     ownerDiv.style.display = 'block';
                     ownerSelect.innerHTML = APP.data.users
+                        .filter(u => u.role !== 'diretoria_restrita')
                         .map(u => `<option value="${u.name}" ${u.name === APP.user.name ? 'selected' : ''}>${u.name}</option>`)
                         .join('');
                 } else {
