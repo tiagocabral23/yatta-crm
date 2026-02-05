@@ -4,19 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#111827">
-    <title>TRAIL SYSTEM v4.3 | Status Split Logic</title>
+    <title>TRAIL SYSTEM v4.4 | Realtime & Analytics</title>
     
     <!-- Bibliotecas Externas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js para Gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- LEAFLET MAPS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <style>
-        /* TRAIL SYSTEM - v4.3
-           Atualizado: Lógica de Status Split (Em Disputa vs Reservado)
+        /* TRAIL SYSTEM - v4.4
+           Atualizado: Realtime, Charts, Map Drilldown, Aging
         */
 
         /* --- ESTILO VISUAL --- */
@@ -67,8 +69,6 @@
         .inventory-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .inv-card { background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; position: relative; overflow: hidden;}
         .inv-card.critical { border-color: #ef4444; background: #fff5f5; border-top: 4px solid #ef4444; }
-        
-        /* NOVOS ESTILOS DE STATUS */
         .inv-card.dispute { border-color: #f59e0b; background: #fffbeb; border-top: 4px solid #f59e0b; } 
         .inv-card.reserved { border-color: #7c3aed; background: #f5f3ff; border-top: 4px solid #7c3aed; }
 
@@ -107,6 +107,10 @@
         .card-tags { display: flex; gap: 5px; margin-bottom: 5px; justify-content: space-between; align-items: center;}
         .tag { padding: 2px 5px; background: #f3f4f6; border-radius: 3px; font-size: 9px; font-weight: 700; text-transform: uppercase; }
         .card-action { margin-top: 8px; font-size: 10px; background: #eff6ff; color: #1e40af; padding: 4px; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
+        
+        /* AGING STYLE - ESTAGNAÇÃO */
+        .card.stagnant { border-color: #ef4444; background: #fff5f5; }
+        .card.stagnant::after { content: '🕸️'; position: absolute; top: 5px; right: 5px; font-size: 14px; opacity: 0.5; }
 
         /* BOTÕES NO CARD */
         .card-btn-group { display: flex; gap: 3px; }
@@ -156,11 +160,8 @@
         .show-gestor { display: inline-flex !important; }
         .badge { padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
         .badge-success { background: #d1fae5; color: #065f46; }
-        
-        /* NOVAS BADGES */
-        .badge-warning { background: #fef3c7; color: #b45309; } /* Em Disputa */
-        .badge-reserved { background: #ede9fe; color: #5b21b6; border: 1px solid #8b5cf6; } /* Reservado */
-        
+        .badge-warning { background: #fef3c7; color: #b45309; } 
+        .badge-reserved { background: #ede9fe; color: #5b21b6; border: 1px solid #8b5cf6; } 
         .badge-danger { background: #fee2e2; color: #991b1b; }
 
         /* AGENDA STYLES */
@@ -174,6 +175,9 @@
         .agenda-client { font-weight: 800; font-size: 13px; color: #1f2937; }
         .agenda-desc { font-size: 12px; color: #4b5563; margin-top: 2px; }
         .agenda-date { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-right: 15px; }
+
+        /* CHART CONTAINERS */
+        .chart-container { position: relative; height: 250px; width: 100%; }
 
         /* MOBILE RESPONSIVE */
         @media (max-width: 900px) { 
@@ -236,7 +240,7 @@
         <div class="sidebar-footer">
             <div id="user-info" style="color: #fbbf24; font-weight: 800; margin-bottom: 5px;"></div>
             <button onclick="APP.logout()" style="background:none; border:1px solid #374151; color:#9ca3af; padding:4px; width:100%; cursor:pointer;">SAIR</button>
-            <div style="margin-top:15px; font-size:9px; opacity:0.5; color: #fbbf24;">v4.3.0 (Split Status)</div>
+            <div style="margin-top:15px; font-size:9px; opacity:0.5; color: #fbbf24;">v4.4.1 (Fix)</div>
         </div>
     </aside>
 
@@ -262,6 +266,22 @@
                 <div class="data-card" style="margin-bottom: 20px;">
                     <div class="data-card-header">🎯 Metas do Mês</div>
                     <div id="goals-container" style="padding: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;"></div>
+                </div>
+
+                <!-- GRÁFICOS VISUAIS (NOVO) -->
+                <div class="grid-2-col" style="margin-bottom:20px;">
+                    <div class="data-card">
+                        <div class="data-card-header">Evolução de Vendas (6 Meses)</div>
+                        <div style="padding:10px;">
+                            <div class="chart-container"><canvas id="chart-sales"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="data-card">
+                        <div class="data-card-header">Mix de Produtos</div>
+                        <div style="padding:10px;">
+                            <div class="chart-container"><canvas id="chart-mix"></canvas></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="dash-inventory-grid" class="inventory-panel-grid"></div>
@@ -479,6 +499,7 @@
     </main>
 
     <!-- Modais -->
+    <!-- Modal Item Estoque -->
     <div id="modal-item" class="modal">
         <div class="modal-box">
             <h3>Gerenciar Estoque</h3>
@@ -495,6 +516,7 @@
         </div>
     </div>
 
+    <!-- Modal Cliente -->
     <div id="modal-client" class="modal">
         <div class="modal-box">
             <h3>Novo Cliente</h3>
@@ -512,6 +534,7 @@
         </div>
     </div>
 
+    <!-- Modal Histórico -->
     <div id="modal-history" class="modal">
         <div class="modal-box">
             <h3 id="hist-title">📜 Histórico</h3>
@@ -520,6 +543,7 @@
         </div>
     </div>
 
+    <!-- Modal Negócio -->
     <div id="modal-deal" class="modal">
         <div class="modal-box">
             <h3>Detalhes do Negócio</h3>
@@ -568,6 +592,7 @@
         </div>
     </div>
 
+    <!-- Modal Equipe -->
     <div id="modal-user" class="modal">
         <div class="modal-box">
             <h3>Membro da Equipe</h3>
@@ -589,11 +614,25 @@
         </div>
     </div>
 
+    <!-- Modal Drill-down Mapa -->
+    <div id="modal-map-details" class="modal">
+        <div class="modal-box" style="max-width: 500px;">
+            <h3 id="map-detail-title">Detalhes da Região</h3>
+            <div class="table-responsive" style="margin-top:15px;">
+                <table id="table-map-details">
+                    <thead><tr><th>Cliente</th><th>Valor</th><th>Etapa</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:15px">Fechar</button>
+        </div>
+    </div>
+
     <div id="toast">Salvo com sucesso!</div>
 
     <script>
         /**
-         * TRAIL SYSTEM - v4.3 (CLOUD - METAS, VENDAS & SPLIT STATUS)
+         * TRAIL SYSTEM - v4.4 (REALTIME, CHARTS & AGING)
          * Conectado ao Supabase (PostgreSQL)
          */
 
@@ -601,6 +640,8 @@
         const SUPABASE_KEY = 'sb_publishable_mXmrR5peC1mICxxMxjDKrg_2NJUZG0Q'; 
 
         let supabaseClient;
+        let salesChart = null;
+        let mixChart = null;
 
         // COORDENADAS: TODAS AS CIDADES DA MESORREGIÃO DO NORTE DE MINAS GERAIS
         const MG_CITIES_COORDS = {
@@ -737,6 +778,9 @@
                 // SINCRONIZAÇÃO DE STATUS (CORREÇÃO AO CARREGAR)
                 APP.syncStockStatus();
 
+                // INICIALIZAR REALTIME
+                APP.initRealtime();
+
                 const now = new Date();
                 const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
                 const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -754,6 +798,45 @@
                 }
 
                 APP.renderAll(); 
+            },
+
+            // --- REALTIME ---
+            initRealtime: () => {
+                supabaseClient.channel('public:data')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, payload => {
+                        APP.handleRealtimeUpdate('deals', payload);
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, payload => {
+                        APP.handleRealtimeUpdate('stock', payload);
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, payload => {
+                        APP.handleRealtimeUpdate('clients', payload);
+                    })
+                    .subscribe();
+            },
+
+            handleRealtimeUpdate: (table, payload) => {
+                console.log(`Realtime update on ${table}:`, payload);
+                const { eventType, new: newItem, old: oldItem } = payload;
+
+                if (eventType === 'INSERT') {
+                    APP.data[table].push(newItem);
+                } else if (eventType === 'UPDATE') {
+                    const index = APP.data[table].findIndex(item => item.id === newItem.id);
+                    if (index !== -1) {
+                        APP.data[table][index] = newItem;
+                    }
+                } else if (eventType === 'DELETE') {
+                    APP.data[table] = APP.data[table].filter(item => item.id !== oldItem.id);
+                }
+
+                // Se houver mudanças em deals, re-sincronizar status do estoque visualmente
+                if (table === 'deals') {
+                    APP.syncStockStatus();
+                }
+
+                APP.toast('Dados atualizados remotamente 🔄');
+                APP.renderAll();
             },
 
             // FUNÇÃO PARA CORRIGIR STATUS BASEADO NO FUNIL ATUAL
@@ -885,7 +968,10 @@
                 if(tab === 'clientes') APP.renderClients();
                 if(tab === 'agenda') APP.renderAgenda();
                 if(tab === 'vendas') APP.renderCatalog(); 
-                if(tab === 'dashboard') APP.renderGoals(); 
+                if(tab === 'dashboard') {
+                    APP.renderGoals();
+                    setTimeout(APP.renderCharts, 200); // Render Charts
+                } 
                 if(tab === 'diretoria') APP.renderDiretoria();
                 if(tab === 'mapa') setTimeout(APP.renderMap, 200);
             },
@@ -953,11 +1039,17 @@
                             <span style="font-size:12px; font-weight:bold; color:${APP.mapView === 'won' ? '#059669' : '#3b82f6'}">
                                 ${item.total_value.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}
                             </span><br>
-                            <small>${item.count} ${labelType}</small>
+                            <small>${item.count} ${labelType}</small><br>
+                            <small style="color:#6b7280; font-style:italic;">(Clique para detalhes)</small>
                         </div>
                     `;
 
                     marker.bindTooltip(tooltipContent);
+                    
+                    // EVENTO DE CLIQUE (DRILL-DOWN)
+                    marker.on('click', () => {
+                        APP.openMapDetails(item.city, item.seller);
+                    });
                 });
 
                 sellersSet.forEach(seller => {
@@ -1017,6 +1109,37 @@
                 });
 
                 return Object.values(agg);
+            },
+
+            openMapDetails: (city, seller) => {
+                const tbody = document.querySelector('#table-map-details tbody');
+                document.getElementById('map-detail-title').innerText = `Detalhes: ${city} (${seller})`;
+                
+                let filteredDeals = [];
+                if (APP.mapView === 'won') {
+                    filteredDeals = APP.data.deals.filter(d => d.stage === 'ganho' && d.owner === seller);
+                } else {
+                    filteredDeals = APP.data.deals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido' && d.owner === seller);
+                }
+
+                // Filtrar por cidade aproximada
+                filteredDeals = filteredDeals.filter(d => {
+                    const client = APP.data.clients.find(c => c.name === d.client);
+                    const cCity = client ? (client.obs || '') : '';
+                    return cCity.toLowerCase().includes(city.toLowerCase());
+                });
+
+                tbody.innerHTML = filteredDeals.map(d => `
+                    <tr>
+                        <td>${d.client}</td>
+                        <td style="font-weight:bold;">${d.value.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td>
+                        <td><span class="badge badge-success">${d.stage}</span></td>
+                    </tr>
+                `).join('');
+
+                if(filteredDeals.length === 0) tbody.innerHTML = '<tr><td colspan="3">Nenhum detalhe encontrado.</td></tr>';
+                
+                APP.modal('modal-map-details');
             },
 
             removeAccents: (str) => {
@@ -1267,6 +1390,115 @@
                     `;
                 });
                 container.innerHTML = html;
+            },
+
+            renderAgenda: () => {
+                if (!APP.user) return; 
+
+                const container = document.getElementById('agenda-content');
+                if(!container) return;
+                let deals = APP.data.deals.filter(d => d.stage !== 'ganho' && d.stage !== 'perdido' && d.next_date);
+                
+                const isGestor = APP.user.role === 'gestor';
+                const isAssistente = APP.user.role === 'assistente';
+
+                if (!isGestor && !isAssistente) { deals = deals.filter(d => d.owner === APP.user.name); }
+                
+                if(deals.length === 0) { container.innerHTML = '<div style="text-align:center; padding:20px; color:#9ca3af;">Nenhuma tarefa agendada.</div>'; return; }
+                const today = new Date().toISOString().split('T')[0];
+                const delayed = []; const todayList = []; const future = [];
+                deals.sort((a,b) => a.next_date.localeCompare(b.next_date));
+                deals.forEach(d => {
+                    if (d.next_date < today) delayed.push(d); else if (d.next_date === today) todayList.push(d); else future.push(d);
+                });
+                const buildList = (title, list, className) => {
+                    if(list.length === 0) return '';
+                    let html = `<div class="agenda-group"><h4>${title} (${list.length})</h4>`;
+                    list.forEach(d => {
+                        const dateBr = d.next_date.split('-').reverse().join('/');
+                        html += `<div class="agenda-item ${className}" onclick="APP.editDeal('${d.id}')" style="cursor:pointer"><div class="agenda-date">${dateBr}</div><div class="agenda-info"><div class="agenda-client">${d.client}</div><div class="agenda-desc">${d.next_desc || 'Sem descrição'}</div></div><div style="font-size:10px; font-weight:700; background:#f3f4f6; padding:2px 5px; border-radius:3px; text-transform:uppercase;">${d.owner}</div></div>`;
+                    });
+                    html += '</div>'; return html;
+                };
+                container.innerHTML = buildList('⚠ Atrasadas', delayed, 'delayed') + buildList('📅 Hoje', todayList, 'today') + buildList('🚀 Próximas', future, 'future');
+            },
+
+            // --- GRÁFICOS (NOVO) ---
+            renderCharts: () => {
+                const ctxSales = document.getElementById('chart-sales');
+                const ctxMix = document.getElementById('chart-mix');
+                if(!ctxSales || !ctxMix) return;
+
+                // Preparar Dados - Vendas 6 Meses
+                const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                const today = new Date();
+                const labels = [];
+                const dataSales = [];
+                
+                for(let i=5; i>=0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                    labels.push(months[d.getMonth()]);
+                    
+                    const total = APP.data.deals.filter(deal => {
+                        if(deal.stage !== 'ganho' || !deal.close_date) return false;
+                        const dClose = new Date(deal.close_date);
+                        return dClose.getMonth() === d.getMonth() && dClose.getFullYear() === d.getFullYear();
+                    }).reduce((acc, curr) => acc + curr.value, 0);
+                    
+                    dataSales.push(total);
+                }
+
+                // Preparar Dados - Mix
+                const mixCounts = { 'Trator': 0, 'Implemento': 0, 'Outros': 0, 'Consórcio': 0 };
+                APP.data.deals.forEach(d => {
+                    if(d.stage !== 'ganho') return;
+                    let type = 'Consórcio';
+                    if(d.deal_type !== 'consorcio' && d.stock_id) {
+                        // CORREÇÃO DE TIPO (STRING vs NUMBER)
+                        const s = APP.data.stock.find(x => x.id == d.stock_id);
+                        if(s) {
+                            if (s.type === 'Trator') type = 'Trator';
+                            else if (s.type === 'Implemento') type = 'Implemento';
+                            else type = 'Outros';
+                        } else {
+                            // Se tem stock_id mas não achou, conta como Outros (máquina antiga/removida)
+                            type = 'Outros';
+                        }
+                    }
+                    if(mixCounts[type] !== undefined) mixCounts[type] += d.value;
+                });
+
+                // Render Chart 1
+                if(salesChart) salesChart.destroy();
+                salesChart = new Chart(ctxSales, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Vendas (R$)',
+                            data: dataSales,
+                            borderColor: '#fbbf24',
+                            backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false} } }
+                });
+
+                // Render Chart 2
+                if(mixChart) mixChart.destroy();
+                mixChart = new Chart(ctxMix, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(mixCounts),
+                        datasets: [{
+                            data: Object.values(mixCounts),
+                            backgroundColor: ['#fbbf24', '#3b82f6', '#9ca3af', '#10b981']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
             },
 
             renderCatalog: () => {
@@ -1712,6 +1944,7 @@
                 const mix = {
                     'Trator': { qty: 0, val: 0, margin: 0 },
                     'Implemento': { qty: 0, val: 0, margin: 0 },
+                    'Outros': { qty: 0, val: 0, margin: 0 },
                     'Consórcio': { qty: 0, val: 0, margin: 0 }
                 };
 
@@ -1722,16 +1955,21 @@
                     let cost = d.original_cost || 0;
 
                     if (d.deal_type !== 'consorcio' && d.stock_id) {
-                        const s = APP.data.stock.find(x => x.id === d.stock_id);
+                        // CORREÇÃO: Comparação solta (==) para evitar erro de tipo (string vs number)
+                        const s = APP.data.stock.find(x => x.id == d.stock_id);
                         if (s) {
-                            cat = s.type === 'Trator' ? 'Trator' : (s.type === 'Implemento' ? 'Implemento' : 'Outros');
-                            if (!mix[cat]) mix[cat] = { qty: 0, val: 0, margin: 0 };
+                            if (s.type === 'Trator') cat = 'Trator';
+                            else if (s.type === 'Implemento') cat = 'Implemento';
+                            else cat = 'Outros';
                             
                             // Critical Recovery check
                             if (s.date_entry) {
                                 const entryToSaleDays = Math.floor((new Date(d.close_date) - new Date(s.date_entry)) / 86400000);
                                 if (entryToSaleDays > 365) criticalRecovery += d.value;
                             }
+                        } else {
+                            // Se tem ID mas não achou no array atual (ex: deletado), joga em Outros para não poluir Consórcio
+                            cat = 'Outros';
                         }
                     }
 
@@ -1748,10 +1986,12 @@
                 document.getElementById('dir-critical-recovery-top').innerText = criticalRecovery.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
 
                 // Render Mix Table
-                document.querySelector('#table-dir-mix tbody').innerHTML = Object.entries(mix).map(([cat, data]) => {
-                    const avgMargin = data.val > 0 ? ((data.margin / data.val) * 100).toFixed(1) : 0;
-                    return `<tr><td><b>${cat}</b></td><td>${data.qty}</td><td>${data.val.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td style="color:#059669">${avgMargin}%</td></tr>`;
-                }).join('');
+                document.querySelector('#table-dir-mix tbody').innerHTML = Object.entries(mix)
+                    .filter(([cat, data]) => data.val > 0) // Mostra apenas o que tem valor
+                    .map(([cat, data]) => {
+                        const avgMargin = data.val > 0 ? ((data.margin / data.val) * 100).toFixed(1) : 0;
+                        return `<tr><td><b>${cat}</b></td><td>${data.qty}</td><td>${data.val.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td style="color:#059669">${avgMargin}%</td></tr>`;
+                    }).join('') || '<tr><td colspan="4" style="text-align:center; padding:15px; color:#9ca3af;">Sem vendas no período.</td></tr>';
 
                 // Render Pipeline Table per Seller
                 document.querySelector('#table-dir-pipeline-sellers tbody').innerHTML = Object.entries(sellerPipeline)
@@ -1764,7 +2004,7 @@
                 // Render Critical Table
                 document.querySelector('#table-dir-critical tbody').innerHTML = criticalItems.sort((a,b) => b.cost - a.cost).map(s => {
                     const days = APP.daysDiff(new Date(s.date_entry).getTime());
-                    const deal = APP.data.deals.find(d => d.stock_id === s.id);
+                    const deal = APP.data.deals.find(d => d.stock_id == s.id); // Correção ID
                     return `<tr><td>${s.model}</td><td>${s.mono || '-'}</td><td>${new Date(s.date_entry).toLocaleDateString('pt-BR')}</td><td style="color:#991b1b; font-weight:bold;">${days}</td><td>${s.cost.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td><td>${deal ? deal.owner : 'Sem Resp.'}</td></tr>`;
                 }).join('') || '<tr><td colspan="6" style="text-align:center; padding:20px; color:#9ca3af">Nenhum item crítico detectado.</td></tr>';
             },
@@ -2018,6 +2258,39 @@
                     div.ondrop = e => { e.preventDefault(); div.classList.remove('drag-over'); if(APP.dragId) APP.updateStage(APP.dragId, c.id); };
                     let html = `<div class="kanban-header" style="background:${c.c}"><div>${c.l} (${items.length})</div><div class="kanban-header-total">${totalCol.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div><div class="kanban-list">`;
                     items.forEach(d => {
+                        // AGING CHECK - ALERTA DE ESTAGNAÇÃO
+                        let stagnantClass = '';
+                        let lastActionDate = new Date(d.created_at).getTime();
+                        
+                        // Tentar achar a última movimentação no histórico
+                        if (d.history && d.history.length > 0) {
+                            const moves = d.history.filter(h => h.action === 'Movimentação' || h.action === 'Criação');
+                            if(moves.length > 0) {
+                                lastActionDate = new Date(moves[moves.length-1].date).getTime();
+                            }
+                        }
+                        
+                        const daysInStage = APP.daysDiff(lastActionDate);
+                        // Se estiver parado há mais de 10 dias e não for Ganho/Perdido
+                        if (daysInStage > 10 && d.stage !== 'ganho' && d.stage !== 'perdido') {
+                            stagnantClass = 'stagnant';
+                        }
+
+                        // VISUALIZAÇÃO DO PRODUTO (NOVO)
+                        let productDisplay = '';
+                        if (d.stock_id) {
+                            // Busca o item no estoque com comparação solta (==)
+                            const stockItem = APP.data.stock.find(s => s.id == d.stock_id);
+                            if (stockItem) {
+                                productDisplay = `<div style="font-size:11px; font-weight:700; color:#1f2937; background:#f3f4f6; padding:2px 5px; border-radius:3px; margin-bottom:4px; display:inline-block; border:1px solid #e5e7eb;">🚜 ${stockItem.model}</div>`;
+                            } else {
+                                // Caso tenha ID mas não ache (item excluído?), mostra fallback
+                                productDisplay = `<div style="font-size:11px; font-weight:700; color:#6b7280; margin-bottom:4px;">🚜 Item não encontrado</div>`;
+                            }
+                        } else {
+                            productDisplay = `<div style="font-size:11px; font-weight:700; color:#059669; background:#ecfdf5; padding:2px 5px; border-radius:3px; margin-bottom:4px; display:inline-block; border:1px solid #a7f3d0;">📄 Consórcio</div>`;
+                        }
+
                         let actionHtml = '';
                         if(d.stage === 'perdido' && d.next_desc && d.next_desc.includes('PERDA')) { actionHtml = `<div class="card-action" style="color:#991b1b; font-weight:800; background:#fee2e2;">${d.next_desc}</div>`; }
                         else if(d.next_date) {
@@ -2034,12 +2307,12 @@
                         const clientCity = client && client.obs ? client.obs.split('-')[0].trim() : '';
                         const cityBadge = clientCity ? `<div style="font-size:10px; color:#6b7280; font-weight:600; margin-bottom:2px;">📍 ${clientCity}</div>` : '';
 
-                        html += `<div class="card" draggable="true" onclick="APP.editDeal('${d.id}')" ondragstart="APP.dragId='${d.id}'; this.classList.add('dragging')" ondragend="this.classList.remove('dragging')"><div class="card-tags"><span class="tag">👤 ${d.owner}</span><div class="card-btn-group"><button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button>${deleteBtn}</div></div><div style="font-weight:800; margin-bottom:2px;">${d.client}</div>${cityBadge}<div style="font-weight:700; color:#374151;">${d.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>${actionHtml}</div>`;
+                        html += `<div class="card ${stagnantClass}" draggable="true" onclick="APP.editDeal('${d.id}')" ondragstart="APP.dragId='${d.id}'; this.classList.add('dragging')" ondragend="this.classList.remove('dragging')"><div class="card-tags"><span class="tag">👤 ${d.owner}</span><div class="card-btn-group"><button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button>${deleteBtn}</div></div><div style="font-weight:800; margin-bottom:2px;">${d.client}</div>${cityBadge}${productDisplay}<div style="font-weight:700; color:#374151;">${d.value.toLocaleString('pt-BR', {minimumFractionDigits:2})}</div>${actionHtml}</div>`;
                     });
                     html += '</div>'; div.innerHTML = html; container.appendChild(div);
                 });
             },
-
+            
             renderAgenda: () => {
                 if (!APP.user) return; 
 
@@ -2069,6 +2342,84 @@
                     html += '</div>'; return html;
                 };
                 container.innerHTML = buildList('⚠ Atrasadas', delayed, 'delayed') + buildList('📅 Hoje', todayList, 'today') + buildList('🚀 Próximas', future, 'future');
+            },
+
+            // --- GRÁFICOS (NOVO) ---
+            renderCharts: () => {
+                const ctxSales = document.getElementById('chart-sales');
+                const ctxMix = document.getElementById('chart-mix');
+                if(!ctxSales || !ctxMix) return;
+
+                // Preparar Dados - Vendas 6 Meses
+                const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                const today = new Date();
+                const labels = [];
+                const dataSales = [];
+                
+                for(let i=5; i>=0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                    labels.push(months[d.getMonth()]);
+                    
+                    const total = APP.data.deals.filter(deal => {
+                        if(deal.stage !== 'ganho' || !deal.close_date) return false;
+                        const dClose = new Date(deal.close_date);
+                        return dClose.getMonth() === d.getMonth() && dClose.getFullYear() === d.getFullYear();
+                    }).reduce((acc, curr) => acc + curr.value, 0);
+                    
+                    dataSales.push(total);
+                }
+
+                // Preparar Dados - Mix
+                const mixCounts = { 'Trator': 0, 'Implemento': 0, 'Outros': 0, 'Consórcio': 0 };
+                APP.data.deals.forEach(d => {
+                    if(d.stage !== 'ganho') return;
+                    let type = 'Consórcio';
+                    if(d.deal_type !== 'consorcio' && d.stock_id) {
+                        // CORREÇÃO DE TIPO (STRING vs NUMBER)
+                        const s = APP.data.stock.find(x => x.id == d.stock_id);
+                        if(s) {
+                            if (s.type === 'Trator') type = 'Trator';
+                            else if (s.type === 'Implemento') type = 'Implemento';
+                            else type = 'Outros';
+                        } else {
+                            // Se tem stock_id mas não achou, conta como Outros (máquina antiga/removida)
+                            type = 'Outros';
+                        }
+                    }
+                    if(mixCounts[type] !== undefined) mixCounts[type] += d.value;
+                });
+
+                // Render Chart 1
+                if(salesChart) salesChart.destroy();
+                salesChart = new Chart(ctxSales, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Vendas (R$)',
+                            data: dataSales,
+                            borderColor: '#fbbf24',
+                            backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false} } }
+                });
+
+                // Render Chart 2
+                if(mixChart) mixChart.destroy();
+                mixChart = new Chart(ctxMix, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(mixCounts),
+                        datasets: [{
+                            data: Object.values(mixCounts),
+                            backgroundColor: ['#fbbf24', '#3b82f6', '#9ca3af', '#10b981']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
             },
 
             renderKPIs: () => {
