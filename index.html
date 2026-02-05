@@ -746,6 +746,13 @@
                 if(endInput) endInput.value = lastDay.toISOString().split('T')[0];
 
                 APP.renderUserSelect();
+                
+                // --- AUTO LOGIN (LocalStorage) ---
+                const savedUser = localStorage.getItem('trail_user');
+                if (savedUser) {
+                    APP.login(savedUser, true);
+                }
+
                 APP.renderAll(); 
             },
 
@@ -1036,11 +1043,14 @@
                 document.querySelectorAll('form').forEach(f => f.reset()); 
             },
 
-            login: (name) => {
+            login: (name, auto = false) => {
                 const user = APP.data.users.find(u => u.name === name);
-                if (!user) return alert("Usuário não encontrado.");
+                if (!user) {
+                    if(auto) localStorage.removeItem('trail_user'); 
+                    return auto ? null : alert("Usuário não encontrado.");
+                }
 
-                if (user.password) {
+                if (!auto && user.password) {
                     const input = prompt(`Olá ${user.name}, por favor digite sua senha:`);
                     if (input !== user.password) {
                         return alert("Senha incorreta!");
@@ -1048,6 +1058,8 @@
                 }
 
                 APP.user = user;
+                localStorage.setItem('trail_user', user.name); // Salva sessão
+
                 document.getElementById('user-overlay').style.display = 'none';
                 document.getElementById('user-info').innerText = APP.user.name;
                 
@@ -1117,6 +1129,7 @@
             },
 
             logout: () => { 
+                localStorage.removeItem('trail_user'); // Remove sessão salva
                 document.getElementById('user-overlay').style.display = 'flex'; 
                 APP.user = null; 
             },
