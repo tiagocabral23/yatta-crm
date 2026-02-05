@@ -734,6 +734,9 @@
                 // Garantir usuários iniciais
                 await APP.ensureDefaultUser();
 
+                // SINCRONIZAÇÃO DE STATUS (CORREÇÃO AO CARREGAR)
+                APP.syncStockStatus();
+
                 const now = new Date();
                 const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
                 const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -744,6 +747,48 @@
 
                 APP.renderUserSelect();
                 APP.renderAll(); 
+            },
+
+            // FUNÇÃO PARA CORRIGIR STATUS BASEADO NO FUNIL ATUAL
+            syncStockStatus: () => {
+                const statusMap = {}; 
+                // Mapa de prioridade: Vendido (3) > Reservado (2) > Em Disputa (1) > Disponível (0)
+
+                APP.data.deals.forEach(d => {
+                    if (!d.stock_id) return;
+                    if (d.stage === 'perdido') return;
+
+                    let priority = 0; // Prospecção default (Disponível)
+                    
+                    if (d.stage === 'ganho') priority = 3;
+                    else if (d.stage === 'af') priority = 2; // AF
+                    else if (['analise_credito', 'documentacao', 'contrato'].includes(d.stage)) priority = 1; // Em Disputa
+                    
+                    // Se houver mais de uma negociação, mantém a de maior severidade/prioridade
+                    if (statusMap[d.stock_id] === undefined || priority > statusMap[d.stock_id]) {
+                        statusMap[d.stock_id] = priority;
+                    }
+                });
+
+                // Aplica a correção
+                APP.data.stock.forEach(s => {
+                    if (statusMap[s.id] !== undefined) {
+                        let newStatus = 'Disponível';
+                        if (statusMap[s.id] === 3) newStatus = 'Vendido';
+                        else if (statusMap[s.id] === 2) newStatus = 'Reservado';
+                        else if (statusMap[s.id] === 1) newStatus = 'Em Disputa';
+                        // Priority 0 stays Disponível
+
+                        if (s.status !== newStatus) {
+                            s.status = newStatus;
+                        }
+                    } else {
+                        // Se não tem deal associado ativo, garante que volta pra disponível se não for vendido
+                        if (s.status !== 'Vendido' && s.status !== 'Disponível') {
+                             s.status = 'Disponível';
+                        }
+                    }
+                });
             },
 
             ensureDefaultUser: async () => {
@@ -1809,16 +1854,9 @@
                     APP.refreshLocal('deals', data[0]);
                 }
                 
-                // NOVA LÓGICA: Se criar um negócio, coloca a máquina "EM DISPUTA"
-                if(stockId) {
-                    const s = APP.data.stock.find(x => x.id === stockId);
-                    if(s && s.status !== 'Reservado' && s.status !== 'Vendido') {
-                        // Só muda status se não for edição de um item já vendido/reservado em outra transação
-                        const newHist = APP.addLog(s, 'Em Disputa', `Oportunidade: ${dealData.client}`);
-                        await supabaseClient.from('stock').update({status: 'Em Disputa', history: newHist}).eq('id', stockId);
-                        s.status = 'Em Disputa'; 
-                    }
-                }
+                // NOTA: Ao criar um negócio, ele inicia em 'prospeccao', que agora é considerado 'Disponível'.
+                // Portanto, não alteramos o status do estoque aqui.
+                
                 APP.closeModals(); APP.nav('funil');
             },
 
@@ -1901,7 +1939,7 @@
                         let sUpdates = {}; 
                         let sAction = '';
 
-                        // LÓGICA DE STATUS SPLIT
+                        // LÓGICA DE STATUS SPLIT - ATUALIZADA
                         if (stage === 'ganho') { 
                             sUpdates.status = 'Vendido'; 
                             sAction = 'Venda Realizada'; 
@@ -1916,15 +1954,21 @@
                                 sUpdates.status = 'Reservado';
                                 sAction = 'Reservado (AF)';
                             }
-                        } else {
-                            // QUALQUER OUTRA ETAPA (Prospecção, Analise, Contrato...) FICA "EM DISPUTA"
+                        } else if (['analise_credito', 'documentacao', 'contrato'].includes(stage)) {
+                            // QUALQUER OUTRA ETAPA EXCETO PROSPECÇÃO FICA "EM DISPUTA"
                             if (s.status !== 'Em Disputa' && s.status !== 'Vendido') {
                                 sUpdates.status = 'Em Disputa';
                                 sAction = 'Em Disputa (Funil)';
                             }
+                        } else if (stage === 'prospeccao') {
+                            // SE VOLTAR PARA PROSPECÇÃO, FICA DISPONÍVEL
+                            if (s.status !== 'Disponível' && s.status !== 'Vendido') {
+                                sUpdates.status = 'Disponível';
+                                sAction = 'Disponível (Prospecção)';
+                            }
                         }
 
-                        if(sAction) {
+                        if(sAction && s.status !== sUpdates.status) {
                             s.status = sUpdates.status;
                             sUpdates.history = APP.addLog(s, sAction, `Negócio: ${deal.client}`);
                             await supabaseClient.from('stock').update(sUpdates).eq('id', s.id);
@@ -2064,28 +2108,40 @@
                 const gridContainer = document.getElementById('dash-inventory-grid');
                 if (!isGestor && !isAssistente) { if(gridContainer) gridContainer.innerHTML = ''; return; }
                 
-                // NOVO CÁLCULO DASHBOARD (SPLIT DISPUTA VS RESERVADO)
-                const disputeStock = APP.data.stock.filter(s => s.status === 'Em Disputa');
-                const disputeValue = disputeStock.reduce((a, b) => a + b.cost, 0);
-
-                const reservedStock = APP.data.stock.filter(s => s.status === 'Reservado');
-                const reservedValue = reservedStock.reduce((a, b) => a + b.cost, 0);
+                // NOVO CÁLCULO DASHBOARD (SPLIT DISPUTA VS RESERVADO) - CORRIGIDO
+                // Agora "Estoque Total" considera TUDO que está no pátio (Disponível + Disputa + Reservado)
+                const allStock = APP.data.stock.filter(s => s.status !== 'Vendido');
                 
-                const availableStock = APP.data.stock.filter(s => s.status === 'Disponível');
-                const types = {}; let totalStockValue = 0; let criticalValue = 0;
-                availableStock.forEach(s => {
-                    if(!types[s.type]) types[s.type] = 0; types[s.type] += s.cost; totalStockValue += s.cost;
+                let totalStockValue = 0;
+                let criticalValue = 0;
+                const types = {};
+
+                allStock.forEach(s => {
+                    // Soma total global (Patrimônio)
+                    totalStockValue += s.cost;
+
+                    // Soma por tipo (Trator, Implemento...)
+                    if(!types[s.type]) types[s.type] = 0; 
+                    types[s.type] += s.cost;
+
+                    // Cálculo de críticos (idade > 365) considerando todo o estoque
                     const entryDate = s.date_entry ? new Date(s.date_entry).getTime() : Date.now();
                     if(APP.daysDiff(entryDate) > 365) criticalValue += s.cost;
                 });
+
+                // Subconjuntos apenas para visualização de status
+                const disputeValue = allStock.filter(s => s.status === 'Em Disputa').reduce((a,b)=>a+b.cost, 0);
+                const reservedValue = allStock.filter(s => s.status === 'Reservado').reduce((a,b)=>a+b.cost, 0);
                 
-                let gridHtml = `<div class="inv-card"><div class="inv-label">💰 Estoque Total</div><div class="inv-value">${totalStockValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
+                let gridHtml = `<div class="inv-card"><div class="inv-label">💰 Estoque Total (Pátio)</div><div class="inv-value">${totalStockValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
+                
                 for (const [type, val] of Object.entries(types)) {
                     gridHtml += `<div class="inv-card"><div class="inv-label">🚜 ${type}</div><div class="inv-value" style="font-size:16px;">${val.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
                 }
-                // CARD EM DISPUTA (NOVO)
+                
+                // CARD EM DISPUTA (Indicador de Funil)
                 gridHtml += `<div class="inv-card dispute"><div class="inv-label">🔥 Em Disputa (Funil)</div><div class="inv-value">${disputeValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
-                // CARD RESERVADO (NOVO)
+                // CARD RESERVADO (Indicador de Fechamento)
                 gridHtml += `<div class="inv-card reserved"><div class="inv-label">🔒 Reservado (A.F.)</div><div class="inv-value">${reservedValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
                 
                 gridHtml += `<div class="inv-card critical"><div class="inv-label">🚨 Capital Crítico (>365d)</div><div class="inv-value">${criticalValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div></div>`;
