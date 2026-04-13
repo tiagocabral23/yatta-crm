@@ -190,6 +190,14 @@
                 <button class="btn-hamburger" onclick="APP.toggleMenu()">☰</button>
                 <h2 id="page-title">DASHBOARD</h2>
             </div>
+            <div style="position:relative; flex:1; max-width:340px; margin:0 20px;">
+                <input id="global-search" type="text" placeholder="🔍 Buscar cliente, negócio ou máquina..."
+                    oninput="APP.globalSearch(this.value)"
+                    onfocus="document.getElementById('global-results').style.display='block'"
+                    onblur="setTimeout(()=>document.getElementById('global-results').style.display='none',200)"
+                    style="width:100%; padding:8px 12px; border:1px solid #e5e7eb; border-radius:6px; font-size:12px; outline:none; background:#f9fafb;">
+                <div id="global-results" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.12); z-index:999; max-height:360px; overflow-y:auto;"></div>
+            </div>
             <button onclick="APP.exportData()" class="btn btn-dark" style="font-size:10px;">💾 Backup Excel</button>
         </header>
 
@@ -462,6 +470,12 @@
                 <h4 style="margin-bottom:10px; font-size:12px; color:#4b5563;">Agendar Próxima Ação</h4>
                 <div class="form-item"><label>Data Limite</label><input type="date" id="deal-next-date"></div>
                 <div class="form-item"><label>Descrição (O que fazer?)</label><input type="text" id="deal-next-desc" placeholder="Ex: Ligar para confirmar, Visita técnica..."></div>
+                <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
+                <div class="form-item">
+                    <label>📝 Observações Internas</label>
+                    <textarea id="deal-obs" rows="3" placeholder="Anotações livres: condições especiais, detalhes da conversa, perfil do cliente..." style="resize:vertical; width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; font-family:inherit;"></textarea>
+                    <small style="color:#9ca3af; font-size:10px;">Visível apenas pela equipe interna.</small>
+                </div>
                 <button class="btn btn-main" style="width:100%">Salvar Negócio</button>
                 <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:5px">Cancelar</button>
             </form>
@@ -1062,7 +1076,8 @@
                     next_date: document.getElementById('deal-next-date').value || null,
                     next_desc: document.getElementById('deal-next-desc').value,
                     owner: selectedOwner || APP.user.name,
-                    city: document.getElementById('deal-city').value || null
+                    city: document.getElementById('deal-city').value || null,
+                    obs: document.getElementById('deal-obs').value || null
                 };
 
                 const cityInput = document.getElementById('deal-city').value;
@@ -1152,6 +1167,7 @@
                 document.getElementById('deal-type').value = d.deal_type || (d.stock_id ? 'maquina' : 'consorcio'); 
                 document.getElementById('deal-next-date').value = d.next_date || ''; 
                 document.getElementById('deal-next-desc').value = d.next_desc || ''; 
+                document.getElementById('deal-obs').value = d.obs || ''; 
                 if (document.getElementById('deal-owner')) document.getElementById('deal-owner').value = d.owner;
                 // Mostra campo de data de fechamento apenas para gestor/assistente em negócios ganhos
                 const closeDateDiv = document.getElementById('div-deal-close-date');
@@ -1202,6 +1218,7 @@
                             updates.next_desc = `⛔ PERDA: ${motivo || 'Não informado'}`;
                             updates.next_date = new Date().toISOString().split('T')[0];
                             updates.history = APP.addLog(deal, 'Movimentação', `De ${oldStage.toUpperCase()} para PERDIDO` + (motivo ? ` (${motivo})` : ''));
+                            updates.updated_at = new Date().toISOString();
                             APP.closeModals();
                             resolve(true);
                         };
@@ -1233,6 +1250,7 @@
                 }
 
                 updates.history = APP.addLog(deal, 'Movimentação', `De ${oldStage.toUpperCase()} para ${stage.toUpperCase()}`);
+                updates.updated_at = new Date().toISOString();
 
                 const { error } = await dbClient.from('deals').update(updates).eq('id', id);
                 if (error) return alert("Erro ao mover cartão: " + error.message);
@@ -2360,6 +2378,61 @@
                 const isOpen = body.style.display !== 'none';
                 body.style.display = isOpen ? 'none' : 'block';
                 if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+            },
+
+            globalSearch: (term) => {
+                const res = document.getElementById('global-results');
+                if(!res) return;
+                const q = term.trim().toLowerCase();
+                if(q.length < 2) { res.innerHTML = ''; return; }
+
+                const fmt = v => v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+                const isG = APP.user.role === 'gestor' || APP.user.role === 'assistente';
+                let html = '';
+
+                // Clientes
+                const clients = APP.data.clients.filter(c =>
+                    (c.name||'').toLowerCase().includes(q) ||
+                    (c.phone||'').toLowerCase().includes(q) ||
+                    (c.cpf_cnpj||'').toLowerCase().includes(q)
+                ).slice(0, 4);
+                if(clients.length) {
+                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#9ca3af; text-transform:uppercase; background:#f9fafb;">📇 Clientes</div>`;
+                    html += clients.map(c => `<div onclick="APP.nav('clientes'); document.getElementById('search-client').value='${c.name}'; APP.renderClients();" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:12px;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+                        <div style="font-weight:700;">${c.name}</div>
+                        <div style="font-size:10px; color:#9ca3af;">${c.phone||''} ${c.obs||''}</div>
+                    </div>`).join('');
+                }
+
+                // Negócios
+                let deals = APP.data.deals.filter(d =>
+                    !['ganho','perdido'].includes(d.stage) &&
+                    ((d.client||'').toLowerCase().includes(q) || (d.next_desc||'').toLowerCase().includes(q) || (d.obs||'').toLowerCase().includes(q))
+                );
+                if(!isG) deals = deals.filter(d => d.owner === APP.user.name);
+                deals = deals.slice(0, 4);
+                if(deals.length) {
+                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#9ca3af; text-transform:uppercase; background:#f9fafb;">⚡ Negócios em Aberto</div>`;
+                    html += deals.map(d => `<div onclick="APP.nav('funil'); APP.editDeal('${d.id}');" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:12px;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+                        <div style="font-weight:700;">${d.client} <span style="font-size:10px; color:#9ca3af;">— ${d.owner}</span></div>
+                        <div style="font-size:10px; color:#9ca3af;">${fmt(d.value||0)} · ${d.stage}</div>
+                    </div>`).join('');
+                }
+
+                // Estoque
+                const stock = APP.data.stock.filter(s =>
+                    s.status !== 'Vendido' &&
+                    ((s.model||'').toLowerCase().includes(q) || (s.mono||'').toLowerCase().includes(q))
+                ).slice(0, 4);
+                if(stock.length) {
+                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#9ca3af; text-transform:uppercase; background:#f9fafb;">🚜 Estoque</div>`;
+                    html += stock.map(s => `<div onclick="APP.nav('estoque'); document.getElementById('search-stock').value='${s.model}'; APP.renderStock();" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:12px;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+                        <div style="font-weight:700;">${s.model}</div>
+                        <div style="font-size:10px; color:#9ca3af;">${s.type} · ${s.mono||'-'} · ${fmt(s.cost)}</div>
+                    </div>`).join('');
+                }
+
+                res.innerHTML = html || `<div style="padding:16px; text-align:center; color:#9ca3af; font-size:12px;">Nenhum resultado para "<b>${term}</b>"</div>`;
             },
 
             toggleMenu: () => {
