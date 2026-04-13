@@ -456,6 +456,7 @@
                     <div class="filter-group gestor-ctrl"><label>Vendedor</label><select id="rep-seller"><option value="all">Todos</option></select></div>
                     <button class="btn btn-main" onclick="APP.renderReports()">Filtrar</button>
                     <button class="btn btn-dark" onclick="window.print()">🖨️ Imprimir</button>
+                    <button class="btn btn-main" onclick="APP.exportPDF()">📄 Exportar PDF</button>
                 </div>
                 <div class="grid-stats">
                     <div class="card-stat"><label>Total Vendido (Período)</label><div id="rep-total-val" class="value" style="color:#0ea5e9">R$ 0,00</div></div>
@@ -953,8 +954,14 @@
                 APP.renderAll();
                 
                 dbClient.channel('custom-all-channel')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => APP.reloadTable('deals'))
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, () => APP.reloadTable('stock'))
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, (payload) => {
+                        APP.reloadTable('deals');
+                        APP.notifyRealtime('deals', payload);
+                    })
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, (payload) => {
+                        APP.reloadTable('stock');
+                        APP.notifyRealtime('stock', payload);
+                    })
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => APP.reloadTable('clients'))
                     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => APP.reloadTable('users'))
                     .subscribe();
@@ -2558,6 +2565,123 @@
                 el.querySelector('.obs-text').innerText = expanded ? preview : full;
                 el.querySelector('.obs-arrow').innerText = expanded ? '▾' : '▴';
                 el.dataset.expanded = expanded ? 'false' : 'true';
+            },
+
+            notifyRealtime: (table, payload) => {
+                if(!APP.user) return;
+                const { eventType, new: nItem, old: oItem } = payload;
+                // Ignora mudanças feitas pelo próprio usuário (sem como saber com certeza, mas filtra por owner)
+                const item = nItem || oItem;
+                if(!item) return;
+                if(item.owner === APP.user.name) return; // própria ação
+
+                const stageLabels = {prospeccao:'Prospecção', analise_credito:'Análise Crédito', documentacao:'Documentação', contrato:'Contrato', af:'Ag. Financeiro', ganho:'✅ Ganho', perdido:'❌ Perdido'};
+
+                let msg = '';
+                if(table === 'deals') {
+                    if(eventType === 'INSERT') {
+                        msg = `⚡ ${item.owner} criou negócio: ${item.client}`;
+                    } else if(eventType === 'UPDATE' && oItem && nItem && oItem.stage !== nItem.stage) {
+                        msg = `🔄 ${item.owner} moveu ${item.client} → ${stageLabels[nItem.stage] || nItem.stage}`;
+                    } else if(eventType === 'DELETE') {
+                        msg = `🗑️ Negócio removido: ${oItem.client}`;
+                    }
+                } else if(table === 'stock') {
+                    if(eventType === 'INSERT') msg = `📦 Novo item no estoque: ${item.model}`;
+                    else if(eventType === 'UPDATE' && oItem && nItem && oItem.status !== nItem.status) msg = `🚜 ${item.model} → ${nItem.status}`;
+                }
+
+                if(!msg) return;
+
+                // Toast com estilo diferente para notificações externas
+                APP.toastNotify(msg);
+
+                // Badge na aba do navegador
+                if(document.hidden) {
+                    const original = document.title;
+                    document.title = '🔔 ' + original;
+                    const restore = () => { document.title = original; window.removeEventListener('focus', restore); };
+                    window.addEventListener('focus', restore);
+                }
+            },
+
+            toastNotify: (msg) => {
+                const t = document.getElementById('toast-notify');
+                if(!t) return;
+                t.innerText = msg;
+                t.style.opacity = '1';
+                t.style.transform = 'translateX(-50%) translateY(0)';
+                clearTimeout(APP._notifyTimer);
+                APP._notifyTimer = setTimeout(() => {
+                    t.style.opacity = '0';
+                    t.style.transform = 'translateX(-50%) translateY(10px)';
+                }, 4000);
+            },
+
+            exportPDF: () => {
+                // Coleta dados do relatório atual
+                const titleEl = document.querySelector('#tab-relatorios .data-card-header');
+                const start = document.getElementById('rep-start') ? document.getElementById('rep-start').value : '';
+                const end = document.getElementById('rep-end') ? document.getElementById('rep-end').value : '';
+                const totalVal = document.getElementById('rep-total-val') ? document.getElementById('rep-total-val').innerText : '';
+                const totalCount = document.getElementById('rep-total-count') ? document.getElementById('rep-total-count').innerText : '';
+
+                // Captura linhas da tabela
+                const rows = Array.from(document.querySelectorAll('#table-reports tbody tr'));
+                if(rows.length === 0 || (rows.length === 1 && rows[0].querySelector('td[colspan]'))) {
+                    APP.toast('⚠️ Nenhum dado para exportar. Filtre o relatório primeiro.');
+                    return;
+                }
+
+                const rowsHtml = rows.map(r => {
+                    const cells = Array.from(r.querySelectorAll('td')).map(td => `<td>${td.innerText}</td>`).join('');
+                    return `<tr>${cells}</tr>`;
+                }).join('');
+
+                const periodo = start && end
+                    ? `${start.split('-').reverse().join('/')} até ${end.split('-').reverse().join('/')}`
+                    : 'Período completo';
+
+                const html = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="UTF-8">
+                <title>Relatório TRAIL SYSTEM</title>
+                <style>
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body { font-family: 'Segoe UI', sans-serif; color: #1f2937; padding: 30px; font-size: 12px; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #fbbf24; }
+                    .brand { font-size: 22px; font-weight: 900; color: #111827; font-style: italic; }
+                    .brand span { color: #fbbf24; }
+                    .meta { text-align: right; font-size: 11px; color: #6b7280; }
+                    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+                    .kpi { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+                    .kpi label { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; color: #6b7280; margin-bottom: 4px; }
+                    .kpi .val { font-size: 18px; font-weight: 900; color: #111827; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+                    th { background: #1f2937; color: #fbbf24; padding: 8px 10px; font-size: 10px; text-transform: uppercase; text-align: left; font-weight: 800; }
+                    td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
+                    tr:nth-child(even) td { background: #f9fafb; }
+                    .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+                    @media print { body { padding: 15px; } }
+                </style></head><body>
+                <div class="header">
+                    <div><div class="brand">TRAIL <span>SYSTEM</span></div><div style="font-size:11px; color:#6b7280; margin-top:4px;">Relatório de Vendas</div></div>
+                    <div class="meta"><div><b>Período:</b> ${periodo}</div><div><b>Gerado em:</b> ${new Date().toLocaleString('pt-BR')}</div><div><b>Por:</b> ${APP.user.name}</div></div>
+                </div>
+                <div class="kpis">
+                    <div class="kpi"><label>Total Vendido</label><div class="val">${totalVal}</div></div>
+                    <div class="kpi"><label>Vendas Fechadas</label><div class="val">${totalCount}</div></div>
+                    <div class="kpi"><label>Exportado por</label><div class="val" style="font-size:13px;">${APP.user.name}</div></div>
+                </div>
+                <table>
+                    <thead><tr><th>Data</th><th>Cliente</th><th>Origem</th><th>Vendedor</th><th>Produto</th><th>Valor</th><th>Margem</th></tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+                <div class="footer">TRAIL SYSTEM v4.5 · Relatório gerado automaticamente em ${new Date().toLocaleString('pt-BR')}</div>
+                </body></html>`;
+
+                const win = window.open('', '_blank');
+                win.document.write(html);
+                win.document.close();
+                setTimeout(() => { win.focus(); win.print(); }, 500);
             },
 
             toggleDarkMode: () => {
