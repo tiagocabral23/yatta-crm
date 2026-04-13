@@ -1218,7 +1218,6 @@
                             updates.next_desc = `⛔ PERDA: ${motivo || 'Não informado'}`;
                             updates.next_date = new Date().toISOString().split('T')[0];
                             updates.history = APP.addLog(deal, 'Movimentação', `De ${oldStage.toUpperCase()} para PERDIDO` + (motivo ? ` (${motivo})` : ''));
-                            updates.updated_at = new Date().toISOString();
                             APP.closeModals();
                             resolve(true);
                         };
@@ -1250,7 +1249,6 @@
                 }
 
                 updates.history = APP.addLog(deal, 'Movimentação', `De ${oldStage.toUpperCase()} para ${stage.toUpperCase()}`);
-                updates.updated_at = new Date().toISOString();
 
                 const { error } = await dbClient.from('deals').update(updates).eq('id', id);
                 if (error) return alert("Erro ao mover cartão: " + error.message);
@@ -1823,7 +1821,7 @@
                 const alertsEl = document.getElementById('dash-alerts');
                 if(alertsEl && isG) {
                     const today = new Date().toISOString().split('T')[0];
-                    const stagnant = APP.data.deals.filter(d => !['ganho','perdido'].includes(d.stage) && APP.daysDiff(new Date(d.updated_at||d.created_at||Date.now()).getTime()) > 15).length;
+                    const stagnant = APP.data.deals.filter(d => !['ganho','perdido'].includes(d.stage) && APP.daysDiff(new Date(d.created_at||Date.now()).getTime()) > 15).length;
                     const overdueAgenda = APP.data.deals.filter(d => d.next_date && d.next_date < today && !['ganho','perdido'].includes(d.stage)).length;
                     const critStock = APP.data.stock.filter(s => s.status !== 'Vendido' && APP.daysDiff(new Date(s.date_entry||Date.now()).getTime()) > 365).length;
 
