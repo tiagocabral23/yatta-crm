@@ -192,7 +192,7 @@
             <button onclick="APP.nav('mapa')" id="btn-mapa" class="nav-item">🗺️ Mapa MG</button>
             <button onclick="APP.nav('diretoria')" id="btn-diretoria" class="nav-item gestor-ctrl">🏛️ Diretoria</button>
             <button onclick="APP.nav('vendas')" id="btn-vendas" class="nav-item">💰 Catálogo</button>
-            <button onclick="APP.nav('agenda')" id="btn-agenda" class="nav-item">📅 Agenda</button>
+            <button onclick="APP.nav('agenda')" id="btn-agenda" class="nav-item">📅 Agenda <span id="badge-agenda" style="display:none; background:#ef4444; color:#fff; font-size:9px; font-weight:900; padding:1px 6px; border-radius:10px; margin-left:4px; vertical-align:middle;"></span></button>
             <button onclick="APP.nav('funil')" id="btn-funil" class="nav-item">⚡ Funil de Vendas</button>
             <button onclick="APP.nav('clientes')" id="btn-clientes" class="nav-item">📇 Clientes</button>
             <button onclick="APP.nav('estoque')" id="btn-estoque" class="nav-item">🚜 Estoque</button>
@@ -223,7 +223,7 @@
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <button onclick="APP.toggleDarkMode()" id="btn-dark-mode" title="Alternar Dark Mode" style="background:none; border:1px solid var(--border); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:14px; color:var(--text);">🌙</button>
-                <button onclick="APP.exportData()" class="btn btn-dark" style="font-size:10px;">💾 Backup Excel</button>
+                <button id="btn-global-backup" onclick="APP.exportData()" class="btn btn-dark" style="font-size:10px;">💾 Backup Excel</button>
             </div>
         </header>
 
@@ -455,6 +455,7 @@
                     </div>
                     <div class="filter-group gestor-ctrl"><label>Vendedor</label><select id="rep-seller"><option value="all">Todos</option></select></div>
                     <button class="btn btn-main" onclick="APP.renderReports()">Filtrar</button>
+                    <button class="btn btn-dark" onclick="APP.exportReportsFiltered()">📊 Exportar Excel</button>
                     <button class="btn btn-dark" onclick="window.print()">🖨️ Imprimir</button>
                     <button class="btn btn-main" onclick="APP.exportPDF()">📄 Exportar PDF</button>
                 </div>
@@ -697,7 +698,8 @@
         </div>
     </div>
 
-    <div id="toast>Sucesso!</div>
+    <div id="toast"></div>
+    <div id="toast-notify" style="position:fixed; bottom:60px; left:50%; transform:translateX(-50%) translateY(10px); background:#1d4ed8; color:#fff; padding:10px 20px; border-radius:8px; opacity:0; transition:opacity .3s, transform .3s; z-index:3001; font-weight:700; font-size:12px; pointer-events:none;"></div>
 
     <div id="modal-confirm" class="modal">
         <div class="modal-box" style="max-width:360px; text-align:center;">
@@ -1025,10 +1027,27 @@
                 APP.renderCatalog();
                 APP.renderGoals();
                 APP.renderDiretoria();
+                APP.updateAgendaBadge();
                 setTimeout(APP.renderCharts, 200);
             },
 
             funilType: 'todos',
+
+            updateAgendaBadge: () => {
+                if (!APP.user) return;
+                const today = new Date().toISOString().split('T')[0];
+                let atrasadas = APP.data.deals.filter(d =>
+                    d.stage !== 'ganho' && d.stage !== 'perdido' &&
+                    d.next_date && d.next_date < today
+                );
+                if (APP.user.role !== 'gestor' && APP.user.role !== 'assistente') {
+                    atrasadas = atrasadas.filter(d => d.owner === APP.user.name);
+                }
+                const badge = document.getElementById('badge-agenda');
+                if (!badge) return;
+                if (atrasadas.length > 0) { badge.style.display = 'inline'; badge.innerText = atrasadas.length; }
+                else { badge.style.display = 'none'; }
+            },
 
             setFunilType: (type) => {
                 APP.funilType = type;
@@ -1166,6 +1185,7 @@
 
                         // Botão excluir
                         const delBtn = APP.user.role === 'gestor' ? `<button onclick="event.stopPropagation(); APP.deleteDeal('${d.id}')" class="btn-card-icon" title="Excluir">🗑️</button>` : '';
+                        const dupBtn = `<button onclick="event.stopPropagation(); APP.duplicateDeal('${d.id}')" class="btn-card-icon" title="Duplicar negócio">📋</button>`;
 
                         const card = document.createElement('div');
                         card.className = `card ${isStagnant ? 'stagnant' : ''}`;
@@ -1175,6 +1195,7 @@
                                 <span class="tag">👤 ${d.owner}</span>
                                 <div class="card-btn-group">
                                     <button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Ver Histórico">📜 Histórico</button>
+                                    ${dupBtn}
                                     ${delBtn}
                                 </div>
                             </div>
@@ -1372,6 +1393,28 @@
                     APP.toast('Excluído!'); 
                     await APP.reloadTable('deals');
                 }
+            },
+
+            duplicateDeal: async (id) => {
+                const d = APP.data.deals.find(x => x.id === id);
+                if (!d) return;
+                if (!await APP.confirm(`Duplicar negócio de "${d.client}"?\nO clone será criado na etapa Prospecção.`, 'Duplicar Negócio', '📋', 'Duplicar', false)) return;
+                const clone = {
+                    client:    d.client,
+                    source:    d.source,
+                    value:     d.value,
+                    deal_type: d.deal_type,
+                    owner:     d.owner,
+                    city:      d.city || null,
+                    stage:     'prospeccao',
+                    next_date: d.next_date || null,
+                    next_desc: d.next_desc || null,
+                    history:   [{ date: new Date().toISOString(), user: APP.user.name, action: 'Criação', detail: `Duplicado do negócio de ${d.client}` }]
+                };
+                const { error } = await dbClient.from('deals').insert(clone);
+                if (error) return alert('Erro ao duplicar: ' + error.message);
+                APP.toast('📋 Negócio duplicado na Prospecção!');
+                await APP.reloadTable('deals');
             },
 
             updateStage: async (id, stage) => {
@@ -2120,7 +2163,50 @@
                 if(document.getElementById('rep-total-count')) document.getElementById('rep-total-count').innerText = count;
             },
 
-            // --- MAPAS, CATALOGO, AGENDA, GRAFICOS ---
+            exportReportsFiltered: () => {
+                const start  = document.getElementById('rep-start')?.value || '';
+                const end    = document.getElementById('rep-end')?.value   || '';
+                const source = document.getElementById('rep-source')?.value || 'all';
+                const seller = document.getElementById('rep-seller')?.value || 'all';
+                const isG    = APP.user.role === 'gestor' || APP.user.role === 'assistente';
+
+                const startTs = start ? new Date(start).getTime() : 0;
+                const endTs   = end   ? new Date(end).getTime() + 86400000 : Infinity;
+
+                const rows = [['Data','Cliente','Origem','Vendedor','Produto','Valor (R$)','Margem (R$)','Margem %']];
+
+                APP.data.deals.forEach(d => {
+                    if (d.stage !== 'ganho' || !d.close_date) return;
+                    const dt = new Date(d.close_date).getTime();
+                    if (dt < startTs || dt >= endTs) return;
+                    if (source !== 'all' && d.source !== source) return;
+                    if (!isG && d.owner !== APP.user.name) return;
+                    if (isG && seller !== 'all' && d.owner !== seller) return;
+
+                    let prod = 'Consórcio'; let cost = d.original_cost || 0;
+                    if (d.stock_id) {
+                        const s = APP.data.stock.find(x => x.id === d.stock_id);
+                        if (s) { prod = s.model; if (!cost) cost = s.cost; }
+                    }
+                    const mar = d.value - cost;
+                    const mp  = d.value > 0 ? ((mar / d.value) * 100).toFixed(1) + '%' : '0%';
+                    rows.push([
+                        new Date(dt).toLocaleDateString('pt-BR'),
+                        d.client, d.source || '-', d.owner, prod,
+                        d.value, mar, mp
+                    ]);
+                });
+
+                if (rows.length <= 1) return APP.toast('⚠️ Nenhuma venda para exportar com estes filtros.');
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                ws['!cols'] = [{wch:12},{wch:28},{wch:16},{wch:20},{wch:32},{wch:16},{wch:16},{wch:10}];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
+                const fname = `relatorio${start ? '_' + start : ''}${end ? '_ate_' + end : ''}.xlsx`;
+                XLSX.writeFile(wb, fname);
+                APP.toast('✅ Relatório exportado!');
+            },
             _cityCoordCache: JSON.parse(localStorage.getItem('trail_city_cache') || '{}'),
             _sellerColors: ['#e63946','#2a9d8f','#e9c46a','#f4a261','#264653','#8ecae6','#a8dadc','#457b9d','#6a4c93','#f77f00','#06d6a0','#ef476f','#118ab2','#ffd166','#073b4c'],
             // Paleta fixa: cada vendedor tem sempre a mesma cor distinta
@@ -2213,9 +2299,12 @@
                     agg[key].val += d.value; agg[key].count++;
                 });
 
-                const legendEl = document.getElementById('map-legend'); if(legendEl) legendEl.innerHTML = '<strong>Vendedores</strong>';
+                const legendEl = document.getElementById('map-legend');
+                if(legendEl) legendEl.innerHTML = '<strong style="display:block;margin-bottom:6px;">Vendedores</strong>';
                 const sellers = new Set();
-                APP._sellerColorMap = {}; // reset a cada render para consistência
+                if (!APP._mapHiddenSellers) APP._mapHiddenSellers = new Set();
+                APP._sellerColorMap = {};
+                const allMarkers = [];
                 Object.values(agg).forEach(item => {
                     sellers.add(item.seller);
                     const color = APP.getSellerColor(item.seller);
@@ -2227,10 +2316,30 @@
                         tb.innerHTML = filtered.filter(d => d.owner === item.seller && d.city === item.city).map(d => `<tr><td>${d.client}</td><td style="font-weight:bold;">${d.value.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td><td><span class="badge badge-success">${d.stage}</span></td></tr>`).join('') || '<tr><td colspan="3">Vazio</td></tr>';
                         APP.modal('modal-map-details');
                     });
+                    if (APP._mapHiddenSellers.has(item.seller)) marker.setStyle({ opacity: 0, fillOpacity: 0 });
+                    allMarkers.push({ seller: item.seller, marker });
                 });
                 sellers.forEach(s => {
                     const color = APP.getSellerColor(s);
-                    if(legendEl) legendEl.innerHTML += `<div class="legend-item"><div class="legend-color" style="background:${color}; width:12px; height:12px; border-radius:50%;"></div><span>${s}</span></div>`;
+                    const isHidden = APP._mapHiddenSellers.has(s);
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'legend-item';
+                    itemEl.style.cssText = `cursor:pointer; padding:3px 4px; border-radius:4px; transition:0.15s; opacity:${isHidden ? '0.4' : '1'}; user-select:none;`;
+                    itemEl.title = isHidden ? 'Clique para mostrar' : 'Clique para ocultar';
+                    itemEl.innerHTML = `<div style="width:12px;height:12px;border-radius:50%;background:${color};flex-shrink:0;"></div><span style="${isHidden ? 'text-decoration:line-through;color:#9ca3af;' : ''}">${s}</span>`;
+                    itemEl.onclick = () => {
+                        if (APP._mapHiddenSellers.has(s)) APP._mapHiddenSellers.delete(s);
+                        else APP._mapHiddenSellers.add(s);
+                        const hide = APP._mapHiddenSellers.has(s);
+                        allMarkers.filter(m => m.seller === s).forEach(m =>
+                            m.marker.setStyle({ opacity: hide ? 0 : 1, fillOpacity: hide ? 0 : 0.7 })
+                        );
+                        itemEl.style.opacity = hide ? '0.4' : '1';
+                        itemEl.querySelector('span').style.textDecoration = hide ? 'line-through' : '';
+                        itemEl.querySelector('span').style.color = hide ? '#9ca3af' : '';
+                        itemEl.title = hide ? 'Clique para mostrar' : 'Clique para ocultar';
+                    };
+                    if(legendEl) legendEl.appendChild(itemEl);
                 });
             },
             switchMapView: (view) => { APP.mapView = view; document.getElementById('btn-view-won').classList.toggle('active', view === 'won'); document.getElementById('btn-view-pipeline').classList.toggle('active', view === 'pipeline'); document.getElementById('map-header-title').innerText = view === 'won' ? '🗺️ Mapa de Vendas (MG)' : '🗺️ Mapa de Cobertura (Funil)'; APP.renderMap(); },
