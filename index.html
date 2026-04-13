@@ -1079,11 +1079,12 @@
                         let obsHtml = '';
                         if(d.obs && d.obs.trim()) {
                             const obsId = 'obs-' + d.id;
-                            const preview = d.obs.length > 55 ? d.obs.slice(0,55) + '...' : d.obs;
-                            obsHtml = `<div class="card-obs-preview" onclick="event.stopPropagation(); (function(){ var el=document.getElementById('${obsId}'); el.style.display=el.style.display==='none'?'block':'none'; })()">
-                                <span style="color:#9ca3af; font-size:9px; text-transform:uppercase; letter-spacing:0.5px;">nota interna ▾</span><br>
-                                <span id="${obsId}" style="display:none;">${d.obs}</span>
-                                <span class="obs-preview-text">${preview}</span>
+                            const isTruncated = d.obs.length > 55;
+                            const preview = isTruncated ? d.obs.slice(0, 55) + '...' : d.obs;
+                            // Salva o texto completo como atributo para evitar problemas com aspas/quebras de linha
+                            obsHtml = `<div class="card-obs-preview" data-obs-full="${encodeURIComponent(d.obs)}" data-obs-id="${obsId}" data-expanded="false" onclick="event.stopPropagation(); APP.toggleObs(this)">
+                                <span style="color:#9ca3af; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:2px;">📝 nota interna <span class="obs-arrow">▾</span></span>
+                                <span class="obs-text">${preview}</span>
                             </div>`;
                         }
 
@@ -2472,6 +2473,15 @@
                 const isOpen = body.style.display !== 'none';
                 body.style.display = isOpen ? 'none' : 'block';
                 if(arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+            },
+
+            toggleObs: (el) => {
+                const expanded = el.dataset.expanded === 'true';
+                const full = decodeURIComponent(el.dataset.obsFull);
+                const preview = full.length > 55 ? full.slice(0, 55) + '...' : full;
+                el.querySelector('.obs-text').innerText = expanded ? preview : full;
+                el.querySelector('.obs-arrow').innerText = expanded ? '▾' : '▴';
+                el.dataset.expanded = expanded ? 'false' : 'true';
             },
 
             globalSearch: (term) => {
