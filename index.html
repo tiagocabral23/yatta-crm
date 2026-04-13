@@ -8,8 +8,26 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <style>
         /* ESTILO INTEGRADO - TRAIL SYSTEM */
+        :root {
+            --bg: #f3f4f6; --surface: #fff; --border: #e5e7eb;
+            --text: #1f2937; --text-soft: #6b7280; --text-muted: #9ca3af;
+            --header-bg: #fff; --header-border: #e5e7eb;
+            --th-bg: #f9fafb; --td-border: #f3f4f6;
+            --input-bg: #fff; --input-border: #d1d5db;
+            --card-bg: #fff; --kanban-col-bg: #e5e7eb;
+            --filter-bar-bg: #fff;
+        }
+        body.dark-mode {
+            --bg: #0f172a; --surface: #1e293b; --border: #334155;
+            --text: #e2e8f0; --text-soft: #94a3b8; --text-muted: #64748b;
+            --header-bg: #1e293b; --header-border: #334155;
+            --th-bg: #1e293b; --td-border: #1e293b;
+            --input-bg: #0f172a; --input-border: #334155;
+            --card-bg: #1e293b; --kanban-col-bg: #1e293b;
+            --filter-bar-bg: #1e293b;
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; outline: 0; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f3f4f6; color: #1f2937; display: flex; height: 100vh; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; transition: background 0.3s, color 0.3s; }
         #sidebar { width: 260px; background: #111827; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: 0.3s; z-index: 1000; }
         .brand { padding: 25px; text-align: center; background: #000; border-bottom: 2px solid #fbbf24; }
         .brand h1 { color: #fbbf24; font-size: 20px; font-weight: 900; font-style: italic; }
@@ -19,19 +37,19 @@
         .nav-item.active { background: #fbbf24; color: #000; border-right: 4px solid #b45309; }
         .sidebar-footer { padding: 20px; text-align: center; font-size: 11px; color: #6b7280; border-top: 1px solid #1f2937; background: #0f172a; }
         #main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; width: 100%; }
-        header { height: 60px; background: #fff; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+        header { height: 60px; background: var(--header-bg); border-bottom: 1px solid var(--header-border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
         .header-left { display: flex; align-items: center; }
         .btn-hamburger { display: none; background: none; border: none; font-size: 24px; cursor: pointer; color: #1f2937; margin-right: 15px; }
         .btn-close-sidebar { display: none; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
-        .viewport { flex: 1; padding: 20px; overflow-y: auto; background: #f3f4f6; }
+        .viewport { flex: 1; padding: 20px; overflow-y: auto; background: var(--bg); }
         .tab-content { display: none; height: 100%; }
         .tab-content.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .card-stat { background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e5e7eb; border-top: 4px solid #fbbf24; }
+        .card-stat { background: var(--surface); padding: 15px; border-radius: 10px; border: 1px solid var(--border); border-top: 4px solid #fbbf24; }
         .card-stat label { display: block; font-size: 10px; font-weight: 800; color: #6b7280; text-transform: uppercase; }
         .card-stat .value { font-size: 20px; font-weight: 900; }
-        .data-card { background: #fff; border-radius: 10px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 20px; }
+        .data-card { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 20px; }
         .data-card-header { background: #1f2937; color: #fbbf24; padding: 10px 15px; font-weight: 800; text-transform: uppercase; font-size: 11px; }
         
         .inventory-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
@@ -43,18 +61,18 @@
         .inv-value { font-size: 18px; font-weight: 900; color: #111827; }
         
         .kanban-board { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; height: calc(100vh - 200px); }
-        .kanban-col { background: #e5e7eb; min-width: 280px; max-width: 280px; border-radius: 8px; display: flex; flex-direction: column; }
+        .kanban-col { background: var(--kanban-col-bg); min-width: 280px; max-width: 280px; border-radius: 8px; display: flex; flex-direction: column; }
         .kanban-header { padding: 12px; font-weight: 800; color: #fff; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; font-size: 11px; }
         .kanban-list { padding: 10px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
-        .card { background: #fff; padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border-left: 4px solid #111827; cursor: grab; transition: .2s; }
+        .card { background: var(--card-bg); padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border-left: 4px solid #111827; cursor: grab; transition: .2s; }
         .card:active { cursor: grabbing; }
         .card.dragging { opacity: 0.5; transform: rotate(2deg); }
         .card.stagnant { border-color: #ef4444; background: #fff5f5; position: relative; }
         .card.stagnant::after { content: '🕸️'; position: absolute; top: 5px; right: 5px; font-size: 14px; opacity: 0.5; }
         .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 12px; background: #f9fafb; font-size: 10px; text-transform: uppercase; color: #4b5563; }
-        td { padding: 12px; font-size: 13px; border-bottom: 1px solid #f3f4f6; }
+        th { text-align: left; padding: 12px; background: var(--th-bg); font-size: 10px; text-transform: uppercase; color: #4b5563; }
+        td { padding: 12px; font-size: 13px; border-bottom: 1px solid var(--td-border); color: var(--text); }
         
         .chart-container { position: relative; height: 250px; width: 100%; }
         #map-container { height: 100%; width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; position: relative; }
@@ -66,7 +84,7 @@
         .btn-map-toggle { padding: 4px 10px; border: none; border-radius: 4px; font-size: 10px; font-weight: 800; cursor: pointer; background: transparent; color: #4b5563; transition: 0.2s; }
         .btn-map-toggle.active { background: #fff; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e5e7eb; align-items: flex-end; flex-wrap: wrap; }
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; background: var(--filter-bar-bg); padding: 15px; border-radius: 10px; border: 1px solid #e5e7eb; align-items: flex-end; flex-wrap: wrap; }
         .filter-group { flex: 1; min-width: 150px; }
         .filter-group label { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; color: #4b5563; }
         .filter-group input, .filter-group select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
@@ -85,10 +103,10 @@
         
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal.active { display: flex; }
-        .modal-box { background: #fff; width: 450px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
+        .modal-box { background: var(--surface); width: 450px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
         .form-item { margin-bottom: 12px; }
         .form-item label { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; color: #4b5563; }
-        .form-item input, .form-item select, .form-item textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: #fff; font-family: inherit; }
+        .form-item input, .form-item select, .form-item textarea { width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; font-size: 14px; background: var(--input-bg); color: var(--text); font-family: inherit; }
 
 
         .stock-tab-btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; color: #4b5563; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
@@ -203,7 +221,10 @@
                     style="width:100%; padding:8px 12px; border:1px solid #e5e7eb; border-radius:6px; font-size:12px; outline:none; background:#f9fafb;">
                 <div id="global-results" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.12); z-index:999; max-height:360px; overflow-y:auto;"></div>
             </div>
-            <button onclick="APP.exportData()" class="btn btn-dark" style="font-size:10px;">💾 Backup Excel</button>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button onclick="APP.toggleDarkMode()" id="btn-dark-mode" title="Alternar Dark Mode" style="background:none; border:1px solid var(--border); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:14px; color:var(--text);">🌙</button>
+                <button onclick="APP.exportData()" class="btn btn-dark" style="font-size:10px;">💾 Backup Excel</button>
+            </div>
         </header>
 
         <div class="viewport">
@@ -627,7 +648,55 @@
         </div>
     </div>
 
-    <div id="toast">Sucesso!</div>
+    <!-- Modal Perfil do Cliente -->
+    <div id="modal-client-profile" class="modal">
+        <div class="modal-box" style="max-width:560px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                <div>
+                    <h3 id="profile-name" style="font-size:18px; font-weight:900; color:var(--text);"></h3>
+                    <div id="profile-cpf" style="font-size:11px; color:var(--text-soft); margin-top:2px;"></div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button id="profile-edit-btn" class="btn btn-main btn-small">✏️ Editar</button>
+                    <button onclick="APP.closeModals()" class="btn btn-small" style="background:var(--border); color:var(--text);">✕</button>
+                </div>
+            </div>
+
+            <!-- KPIs do cliente -->
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;">
+                <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center;">
+                    <div style="font-size:9px; font-weight:800; color:var(--text-soft); text-transform:uppercase;">Total Comprado</div>
+                    <div id="profile-total" style="font-size:14px; font-weight:900; color:#10b981; margin-top:4px;"></div>
+                </div>
+                <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center;">
+                    <div style="font-size:9px; font-weight:800; color:var(--text-soft); text-transform:uppercase;">Ganhos</div>
+                    <div id="profile-won" style="font-size:20px; font-weight:900; color:#10b981; margin-top:4px;"></div>
+                </div>
+                <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center;">
+                    <div style="font-size:9px; font-weight:800; color:var(--text-soft); text-transform:uppercase;">Em Aberto</div>
+                    <div id="profile-active" style="font-size:20px; font-weight:900; color:#8b5cf6; margin-top:4px;"></div>
+                </div>
+                <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center;">
+                    <div style="font-size:9px; font-weight:800; color:var(--text-soft); text-transform:uppercase;">Perdidos</div>
+                    <div id="profile-lost" style="font-size:20px; font-weight:900; color:#ef4444; margin-top:4px;"></div>
+                </div>
+            </div>
+
+            <!-- Dados de contato -->
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:16px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div><div style="font-size:9px; font-weight:800; color:var(--text-soft); text-transform:uppercase; margin-bottom:2px;">Telefone</div><div id="profile-phone" style="font-size:12px; font-weight:600;"></div></div>
+                <div><div style="font-size:9px; font-weight:800; color:var(--text-soft); text-transform:uppercase; margin-bottom:2px;">Email</div><div id="profile-email" style="font-size:12px;"></div></div>
+                <div><div style="font-size:9px; font-weight:800; color:var(--text-soft); text-transform:uppercase; margin-bottom:2px;">Cidade</div><div id="profile-city" style="font-size:12px;"></div></div>
+                <div><div style="font-size:9px; font-weight:800; color:var(--text-soft); text-transform:uppercase; margin-bottom:2px;">Documentos</div><div id="profile-doc" style="font-size:12px;"></div></div>
+            </div>
+
+            <!-- Histórico de negócios -->
+            <div style="font-size:10px; font-weight:800; color:var(--text-soft); text-transform:uppercase; margin-bottom:8px;">Histórico de Negócios</div>
+            <div id="profile-deals" style="border:1px solid var(--border); border-radius:8px; overflow:hidden; max-height:240px; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <div id="toast>Sucesso!</div>
 
     <div id="modal-confirm" class="modal">
         <div class="modal-box" style="max-width:360px; text-align:center;">
@@ -1691,8 +1760,15 @@
                         ? APP.data.deals.filter(d => d.client === c.name && d.stage === 'ganho')
                         : APP.data.deals.filter(d => d.client === c.name && d.stage === 'ganho' && d.owner === APP.user.name);
                     const totalSpent = myDeals.reduce((a, b) => a + b.value, 0);
-                    const docHtml = c.doc_link ? `<a href="${c.doc_link}" target="_blank" class="btn btn-small btn-dark">📂 Drive</a>` : '-';
-                    return `<tr><td><b>${c.name}</b><br><small style="color:#6b7280">${c.cpf_cnpj||''}</small></td><td>${c.phone||'-'} ${c.phone?`<a href="#" onclick="APP.openWhatsapp('${c.phone}')" class="btn-whatsapp">Zap</a>`:''}<br><small>${c.email||''}</small></td><td>${c.obs||'-'}</td><td><span style="color:#059669; font-weight:800;">${totalSpent.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span></td><td>${docHtml}</td><td><button onclick="APP.editClient('${c.id}')" class="btn btn-small btn-main">✏️</button> <button onclick="APP.deleteClient('${c.id}')" class="btn btn-small btn-danger">×</button></td></tr>`;
+                    const docHtml = c.doc_link ? `<a href="${c.doc_link}" target="_blank" class="btn btn-small btn-dark" onclick="event.stopPropagation()">📂 Drive</a>` : '-';
+                    return `<tr style="cursor:pointer;" onclick="APP.viewClientProfile('${c.name.replace(/'/g,"\'")}')" title="Ver perfil completo">
+                        <td><b>${c.name}</b><br><small style="color:#6b7280">${c.cpf_cnpj||''}</small></td>
+                        <td>${c.phone||'-'} ${c.phone?`<a href="#" onclick="event.stopPropagation(); APP.openWhatsapp('${c.phone}')" class="btn-whatsapp">Zap</a>`:''}<br><small>${c.email||''}</small></td>
+                        <td>${c.obs||'-'}</td>
+                        <td><span style="color:#059669; font-weight:800;">${totalSpent.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span></td>
+                        <td>${docHtml}</td>
+                        <td><button onclick="event.stopPropagation(); APP.editClient('${c.id}')" class="btn btn-small btn-main">✏️</button> <button onclick="event.stopPropagation(); APP.deleteClient('${c.id}')" class="btn btn-small btn-danger">×</button></td>
+                    </tr>`;
                 }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#9ca3af;">Nenhum cliente encontrado.</td></tr>';
             },
             saveClient: async (e) => {
@@ -2484,6 +2560,58 @@
                 el.dataset.expanded = expanded ? 'false' : 'true';
             },
 
+            toggleDarkMode: () => {
+                const body = document.body;
+                const isDark = body.classList.toggle('dark-mode');
+                const btn = document.getElementById('btn-dark-mode');
+                if(btn) btn.innerText = isDark ? '☀️' : '🌙';
+                localStorage.setItem('trail_dark_mode', isDark ? '1' : '0');
+            },
+
+            viewClientProfile: (clientName) => {
+                const c = APP.data.clients.find(x => x.name === clientName);
+                if(!c) return;
+                const isG = APP.user.role === 'gestor' || APP.user.role === 'assistente';
+                const fmt = v => v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
+                const allDeals = APP.data.deals.filter(d => d.client === clientName);
+                const won = allDeals.filter(d => d.stage === 'ganho');
+                const active = allDeals.filter(d => !['ganho','perdido'].includes(d.stage));
+                const lost = allDeals.filter(d => d.stage === 'perdido');
+                const totalSpent = won.reduce((a,b) => a+(b.value||0), 0);
+
+                const stageLabels = {prospeccao:'Prospecção', analise_credito:'Análise', documentacao:'Docs', contrato:'Contrato', af:'Ag. Fin.', ganho:'Ganho', perdido:'Perdido'};
+                const stageColors = {prospeccao:'#3b82f6', analise_credito:'#0ea5e9', documentacao:'#eab308', contrato:'#f97316', af:'#8b5cf6', ganho:'#10b981', perdido:'#374151'};
+
+                const dealsHtml = allDeals.length === 0 ? '<div style="color:#9ca3af; padding:10px; text-align:center;">Nenhum negócio registrado.</div>' :
+                    allDeals.sort((a,b) => (b.stage==='ganho'?1:0)-(a.stage==='ganho'?1:0)).map(d => {
+                        const s = APP.data.stock.find(x => x.id == d.stock_id);
+                        const prod = s ? s.model : (d.deal_type==='consorcio' ? 'Consórcio' : '-');
+                        return `<div style="display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid var(--border);">
+                            <span style="background:${stageColors[d.stage]||'#9ca3af'}; color:#fff; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:800; white-space:nowrap;">${stageLabels[d.stage]||d.stage}</span>
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-weight:700; font-size:12px;">${prod}</div>
+                                <div style="font-size:10px; color:var(--text-soft);">${d.owner} ${d.close_date ? '· '+new Date(d.close_date).toLocaleDateString('pt-BR') : ''}</div>
+                            </div>
+                            <div style="font-weight:800; font-size:12px; color:${d.stage==='ganho'?'#10b981':'var(--text)'}; white-space:nowrap;">${fmt(d.value||0)}</div>
+                        </div>`;
+                    }).join('');
+
+                document.getElementById('profile-name').innerText = c.name;
+                document.getElementById('profile-cpf').innerText = c.cpf_cnpj || '-';
+                document.getElementById('profile-phone').innerHTML = c.phone ? `${c.phone} <a href="#" onclick="APP.openWhatsapp('${c.phone}')" class="btn-whatsapp" style="font-size:10px;">Zap</a>` : '-';
+                document.getElementById('profile-email').innerText = c.email || '-';
+                document.getElementById('profile-city').innerText = c.obs || '-';
+                document.getElementById('profile-doc').innerHTML = c.doc_link ? `<a href="${c.doc_link}" target="_blank" class="btn btn-small btn-dark">📂 Drive</a>` : '-';
+                document.getElementById('profile-total').innerText = fmt(totalSpent);
+                document.getElementById('profile-won').innerText = won.length;
+                document.getElementById('profile-active').innerText = active.length;
+                document.getElementById('profile-lost').innerText = lost.length;
+                document.getElementById('profile-deals').innerHTML = dealsHtml;
+                document.getElementById('profile-edit-btn').onclick = () => { APP.closeModals(); APP.editClient(c.id); };
+                APP.modal('modal-client-profile');
+            },
+
             globalSearch: (term) => {
                 const res = document.getElementById('global-results');
                 if(!res) return;
@@ -2613,6 +2741,13 @@
             }
         };
 
-        document.addEventListener('DOMContentLoaded', APP.init);
+        document.addEventListener('DOMContentLoaded', () => {
+            APP.init();
+            if(localStorage.getItem('trail_dark_mode') === '1') {
+                document.body.classList.add('dark-mode');
+                const btn = document.getElementById('btn-dark-mode');
+                if(btn) btn.innerText = '☀️';
+            }
+        });
     </script>
 </body></html>
