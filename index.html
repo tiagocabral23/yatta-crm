@@ -96,6 +96,11 @@
         .stock-tab-btn.active { background: #1f2937; color: #fbbf24; border-color: #1f2937; }
         .stock-tab-count { background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; font-size: 10px; }
         .stock-tab-btn:not(.active) .stock-tab-count { background: #f3f4f6; color: #374151; }
+        .funil-type-btn { padding:6px 14px; border:1px solid #e5e7eb; background:#fff; color:#4b5563; font-size:11px; font-weight:700; cursor:pointer; border-radius:6px; text-transform:uppercase; transition:0.15s; }
+        .funil-type-btn:hover { background:#f3f4f6; }
+        .funil-type-btn.active { background:#1f2937; color:#fbbf24; border-color:#1f2937; }
+        .card-obs-preview { font-size:10px; color:#6b7280; background:#f9fafb; border-top:1px dashed #e5e7eb; margin-top:8px; padding-top:6px; cursor:pointer; line-height:1.4; }
+        .card-obs-preview:hover { color:#374151; }
         .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 700; font-size: 11px; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-main { background: #fbbf24; color: #000; }
         .btn-dark { background: #1f2937; color: #fbbf24; }
@@ -356,12 +361,22 @@
             </section>
 
             <section id="tab-funil" class="tab-content">
-                <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items:center;">
+                <!-- Toolbar -->
+                <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <h3 style="font-weight:900;">MEU FUNIL</h3>
-                    <div style="display:flex; gap:10px;">
-                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:8px; border-radius:6px; border:1px solid #d1d5db;"></select>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <input id="funil-search" type="text" placeholder="🔍 Filtrar por cliente..." oninput="APP.renderKanban()" style="padding:7px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:12px; width:180px;">
+                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:7px 10px; border-radius:6px; border:1px solid #d1d5db; font-size:12px;"></select>
                         <button onclick="APP.prepareDeal()" class="btn btn-main">+ Nova Oportunidade</button>
                     </div>
+                </div>
+                <!-- Resumo rápido -->
+                <div id="funil-summary" style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;"></div>
+                <!-- Toggle tipo -->
+                <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
+                    <button class="funil-type-btn active" onclick="APP.setFunilType('todos')" id="ftype-todos">Todos</button>
+                    <button class="funil-type-btn" onclick="APP.setFunilType('maquina')" id="ftype-maquina">🚜 Máquinas</button>
+                    <button class="funil-type-btn" onclick="APP.setFunilType('consorcio')" id="ftype-consorcio">📄 Consórcios</button>
                 </div>
                 <div id="kanban-board" class="kanban-board"></div>
             </section>
@@ -937,76 +952,160 @@
                 setTimeout(APP.renderCharts, 200);
             },
 
+            funilType: 'todos',
+
+            setFunilType: (type) => {
+                APP.funilType = type;
+                document.querySelectorAll('.funil-type-btn').forEach(b => b.classList.remove('active'));
+                const btn = document.getElementById('ftype-' + type);
+                if(btn) btn.classList.add('active');
+                APP.renderKanban();
+            },
+
             renderKanban: () => {
                 if(!APP.user) return;
-                const cols = [{id:'prospeccao',l:'Prospecção',c:'#3b82f6'},{id:'analise_credito',l:'Análise Crédito',c:'#0ea5e9'},{id:'documentacao',l:'Documentação',c:'#eab308'},{id:'contrato',l:'Contrato',c:'#f97316'},{id:'af',l:'A.F. Final',c:'#8b5cf6'},{id:'ganho',l:'Ganho',c:'#10b981'},{id:'perdido',l:'Perdido',c:'#374151'}];
+                const cols = [
+                    {id:'prospeccao',    l:'Prospecção',      c:'#3b82f6'},
+                    {id:'analise_credito',l:'Análise Crédito', c:'#0ea5e9'},
+                    {id:'documentacao',  l:'Documentação',     c:'#eab308'},
+                    {id:'contrato',      l:'Contrato',         c:'#f97316'},
+                    {id:'af',            l:'A.F. Final',       c:'#8b5cf6'},
+                    {id:'ganho',         l:'Ganho',            c:'#10b981'},
+                    {id:'perdido',       l:'Perdido',          c:'#374151'}
+                ];
                 const board = document.getElementById('kanban-board');
                 if(!board) return; board.innerHTML = '';
-                
+                const today = new Date().toISOString().split('T')[0];
+                const fmt = v => v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
+                // Filtros
                 let deals = APP.data.deals;
                 if (APP.user.role === 'gestor' || APP.user.role === 'assistente') {
-                    const f = document.getElementById('filter-user').value;
-                    if (f !== 'all') deals = deals.filter(d => d.owner === f);
+                    const f = document.getElementById('filter-user') ? document.getElementById('filter-user').value : 'all';
+                    if (f && f !== 'all') deals = deals.filter(d => d.owner === f);
                 } else {
                     deals = deals.filter(d => d.owner === APP.user.name);
                 }
 
+                // Filtro por tipo
+                if(APP.funilType === 'maquina') deals = deals.filter(d => d.deal_type !== 'consorcio');
+                if(APP.funilType === 'consorcio') deals = deals.filter(d => d.deal_type === 'consorcio');
+
+                // Filtro por busca
+                const searchTerm = (document.getElementById('funil-search') ? document.getElementById('funil-search').value : '').toLowerCase().trim();
+                if(searchTerm) deals = deals.filter(d => (d.client||'').toLowerCase().includes(searchTerm));
+
+                // ── Resumo rápido ──
+                const summaryEl = document.getElementById('funil-summary');
+                if(summaryEl) {
+                    const ativos = deals.filter(d => !['ganho','perdido'].includes(d.stage));
+                    const carteira = ativos.reduce((a,b) => a+(b.value||0), 0);
+                    const parados = ativos.filter(d => {
+                        let lastDate = new Date(d.created_at||Date.now()).getTime();
+                        if(d.history && d.history.length > 0) {
+                            const moves = d.history.filter(h => h.action === 'Movimentação' || h.action === 'Criação');
+                            if(moves.length > 0) lastDate = new Date(moves[moves.length-1].date).getTime();
+                        }
+                        return APP.daysDiff(lastDate) > 10;
+                    }).length;
+                    summaryEl.innerHTML = `
+                        <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; flex:1; min-width:130px;">
+                            <div style="font-size:10px; font-weight:800; color:#6b7280; text-transform:uppercase;">⚡ Negócios Ativos</div>
+                            <div style="font-size:20px; font-weight:900; color:#111827;">${ativos.length}</div>
+                        </div>
+                        <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; flex:1; min-width:130px;">
+                            <div style="font-size:10px; font-weight:800; color:#6b7280; text-transform:uppercase;">💰 Em Carteira</div>
+                            <div style="font-size:20px; font-weight:900; color:#8b5cf6;">${fmt(carteira)}</div>
+                        </div>
+                        ${parados > 0 ? `<div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 16px; flex:1; min-width:130px;">
+                            <div style="font-size:10px; font-weight:800; color:#92400e; text-transform:uppercase;">🕸️ Parados +10d</div>
+                            <div style="font-size:20px; font-weight:900; color:#78350f;">${parados}</div>
+                        </div>` : `<div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 16px; flex:1; min-width:130px;">
+                            <div style="font-size:10px; font-weight:800; color:#065f46; text-transform:uppercase;">✅ Todos em Dia</div>
+                            <div style="font-size:20px; font-weight:900; color:#065f46;">—</div>
+                        </div>`}
+                    `;
+                }
+
                 cols.forEach(col => {
-                    const items = deals.filter(d => d.stage === col.id);
-                    const total = items.reduce((acc,curr) => acc + curr.value, 0);
-                    
+                    let items = deals.filter(d => d.stage === col.id);
+                    const total = items.reduce((acc,curr) => acc + (curr.value||0), 0);
+
+                    // ── Ordenação por urgência: atrasados → hoje → futuros → sem data ──
+                    items = items.slice().sort((a, b) => {
+                        const pa = a.next_date || '9999';
+                        const pb = b.next_date || '9999';
+                        return pa.localeCompare(pb);
+                    });
+
                     const div = document.createElement('div');
                     div.className = 'kanban-col';
-                    div.innerHTML = `<div class="kanban-header" style="background:${col.c}"><span>${col.l} (${items.length})</span><span>${total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span></div><div class="kanban-list" id="list-${col.id}"></div>`;
+                    div.innerHTML = `<div class="kanban-header" style="background:${col.c}"><span>${col.l} (${items.length})</span><span>${fmt(total)}</span></div><div class="kanban-list" id="list-${col.id}"></div>`;
                     board.appendChild(div);
-                    
+
                     const list = div.querySelector('.kanban-list');
-                    
+
                     items.forEach(d => {
-                        let stagnantClass = '';
-                        let lastActionDate = new Date(d.created_at).getTime();
-                        if (d.history && d.history.length > 0) {
+                        // Stagnant
+                        let lastActionDate = new Date(d.created_at||Date.now()).getTime();
+                        if(d.history && d.history.length > 0) {
                             const moves = d.history.filter(h => h.action === 'Movimentação' || h.action === 'Criação');
                             if(moves.length > 0) lastActionDate = new Date(moves[moves.length-1].date).getTime();
                         }
-                        if (APP.daysDiff(lastActionDate) > 10 && d.stage !== 'ganho' && d.stage !== 'perdido') {
-                            stagnantClass = 'stagnant';
-                        }
+                        const isStagnant = APP.daysDiff(lastActionDate) > 10 && !['ganho','perdido'].includes(d.stage);
 
+                        // Produto
                         let productDisplay = '';
-                        if (d.stock_id) {
-                            const stockItem = APP.data.stock.find(s => s.id == d.stock_id);
-                            productDisplay = stockItem ? `<div style="font-size:10px; font-weight:700; color:#1f2937; background:#f3f4f6; padding:2px 5px; border-radius:3px; margin-bottom:6px; display:inline-block; border:1px solid #e5e7eb;">🚜 ${stockItem.model}</div>` : '';
+                        if(d.stock_id) {
+                            const s = APP.data.stock.find(x => x.id == d.stock_id);
+                            productDisplay = s ? `<div style="font-size:10px; font-weight:700; color:#1f2937; background:#f3f4f6; padding:2px 5px; border-radius:3px; margin-bottom:6px; display:inline-block; border:1px solid #e5e7eb;">🚜 ${s.model}</div>` : '';
                         } else {
                             productDisplay = `<div style="font-size:10px; font-weight:700; color:#059669; background:#ecfdf5; padding:2px 5px; border-radius:3px; margin-bottom:6px; display:inline-block; border:1px solid #a7f3d0;">📄 Consórcio</div>`;
                         }
 
+                        // Próxima ação
                         let actionHtml = '';
-                        if(d.stage === 'perdido' && d.next_desc && d.next_desc.includes('PERDA')) { actionHtml = `<div class="card-action" style="color:#991b1b; background:#fee2e2;">${d.next_desc}</div>`; }
-                        else if(d.next_date) {
-                            const isDelay = d.next_date < new Date().toISOString().split('T')[0];
-                            const color = isDelay ? '#ef4444' : '#2563eb';
-                            actionHtml = `<div class="card-action" style="color:${color}">📅 ${d.next_date.split('-').reverse().join('/')} - ${d.next_desc}</div>`;
+                        if(d.stage === 'perdido' && d.next_desc && d.next_desc.includes('PERDA')) {
+                            actionHtml = `<div class="card-action" style="color:#991b1b; background:#fee2e2;">${d.next_desc}</div>`;
+                        } else if(d.next_date) {
+                            const isDelay = d.next_date < today;
+                            const isToday = d.next_date === today;
+                            const color = isDelay ? '#ef4444' : isToday ? '#d97706' : '#2563eb';
+                            const bg = isDelay ? '#fee2e2' : isToday ? '#fef3c7' : '#eff6ff';
+                            actionHtml = `<div class="card-action" style="color:${color}; background:${bg};">📅 ${d.next_date.split('-').reverse().join('/')}${d.next_desc ? ' — ' + d.next_desc : ''}</div>`;
                         }
 
-                        const card = document.createElement('div');
-                        card.className = `card ${stagnantClass}`;
-                        card.draggable = true;
-                        
-                        let delBtn = APP.user.role === 'gestor' ? `<button onclick="event.stopPropagation(); APP.deleteDeal('${d.id}')" class="btn-card-icon" title="Excluir">🗑️</button>` : '';
+                        // Observações internas — texto colapsável, sem ícone, separado visualmente do histórico
+                        let obsHtml = '';
+                        if(d.obs && d.obs.trim()) {
+                            const obsId = 'obs-' + d.id;
+                            const preview = d.obs.length > 55 ? d.obs.slice(0,55) + '...' : d.obs;
+                            obsHtml = `<div class="card-obs-preview" onclick="event.stopPropagation(); (function(){ var el=document.getElementById('${obsId}'); el.style.display=el.style.display==='none'?'block':'none'; })()">
+                                <span style="color:#9ca3af; font-size:9px; text-transform:uppercase; letter-spacing:0.5px;">nota interna ▾</span><br>
+                                <span id="${obsId}" style="display:none;">${d.obs}</span>
+                                <span class="obs-preview-text">${preview}</span>
+                            </div>`;
+                        }
 
+                        // Botão excluir
+                        const delBtn = APP.user.role === 'gestor' ? `<button onclick="event.stopPropagation(); APP.deleteDeal('${d.id}')" class="btn-card-icon" title="Excluir">🗑️</button>` : '';
+
+                        const card = document.createElement('div');
+                        card.className = `card ${isStagnant ? 'stagnant' : ''}`;
+                        card.draggable = true;
                         card.innerHTML = `
                             <div class="card-tags">
                                 <span class="tag">👤 ${d.owner}</span>
                                 <div class="card-btn-group">
-                                    <button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button>
+                                    <button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Ver Histórico">📜 Histórico</button>
                                     ${delBtn}
                                 </div>
                             </div>
                             <div style="font-weight:900; font-size:14px; margin-bottom:4px; color:#111827;">${d.client}</div>
                             ${productDisplay}
-                            <div style="font-weight:700; color:#4b5563;">${d.value.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</div>
+                            <div style="font-weight:700; color:#4b5563;">${fmt(d.value||0)}</div>
                             ${actionHtml}
+                            ${obsHtml}
                         `;
                         card.onclick = () => APP.editDeal(d.id);
                         card.ondragstart = () => { APP.dragId = d.id; card.classList.add('dragging'); };
@@ -1015,13 +1114,10 @@
                     });
 
                     list.ondragover = e => { e.preventDefault(); div.classList.add('drag-over'); };
-                    list.ondragleave = e => div.classList.remove('drag-over');
+                    list.ondragleave = () => div.classList.remove('drag-over');
                     list.ondrop = async (e) => {
                         e.preventDefault(); div.classList.remove('drag-over');
-                        if (APP.dragId) {
-                            await APP.updateStage(APP.dragId, col.id);
-                            APP.dragId = null;
-                        }
+                        if(APP.dragId) { await APP.updateStage(APP.dragId, col.id); APP.dragId = null; }
                     };
                 });
             },
