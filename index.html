@@ -879,7 +879,8 @@
 
     <script>
         var SUPABASE_URL = 'https://igvdhpzzjamoyetxickb.supabase.co';
-        var SUPABASE_KEY = 'sb_publishable_mXmrR5peC1mICxxMxjDKrg_2NJUZG0Q';
+        var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlndmRocHp6amFtb3lldHhpY2tiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxOTUwNjYsImV4cCI6MjA4NDc3MTA2Nn0.hVgBzXbsLsOBcQKRFIvZ-BhU5FMYlWEnVm6hh-AcbkE';
+        var SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlndmRocHp6amFtb3lldHhpY2tiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTE5NTA2NiwiZXhwIjoyMDg0NzcxMDY2fQ.pEPJOTJdnKgnkMtdOPy6DaSM4lgk9mXkx_WEtT36Jrk';
         
         var dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1068,15 +1069,12 @@
 
                     // 3. Cria empresa via REST direto como anon (sem JWT de usuário)
                     btn.textContent = 'Criando empresa...';
-                    const supabaseUrl  = dbClient.supabaseUrl;
-                    const supabaseAnon = dbClient.supabaseKey;
-
-                    const restResp = await fetch(`${supabaseUrl}/rest/v1/companies`, {
+                    const restResp = await fetch(`${SUPABASE_URL}/rest/v1/companies`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'apikey': supabaseAnon,
-                            'Authorization': `Bearer ${supabaseAnon}`,
+                            'apikey': SUPABASE_SERVICE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
                             'Prefer': 'return=representation'
                         },
                         body: JSON.stringify({ name: companyName, slug: uniqueSlug, plan: 'trial' })
