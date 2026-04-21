@@ -63,8 +63,8 @@
         .kanban-board { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; height: calc(100vh - 200px); }
         .kanban-col { background: var(--kanban-col-bg); min-width: 280px; max-width: 280px; border-radius: 8px; display: flex; flex-direction: column; }
         .kanban-header { padding: 12px; font-weight: 800; color: #fff; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; font-size: 11px; }
-        .kanban-list { padding: 10px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
-        .card { background: var(--card-bg); padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.1); border-left: 4px solid #111827; cursor: grab; transition: .2s; }
+        .kanban-list { padding: 8px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .card { background: var(--card-bg); padding: 8px 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.08); border-left: 3px solid #111827; cursor: grab; transition: .2s; }
         .card:active { cursor: grabbing; }
         .card.dragging { opacity: 0.5; transform: rotate(2deg); }
         .card.stagnant { border-color: #ef4444; background: #fff5f5; position: relative; }
@@ -100,7 +100,27 @@
         .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #374151; background: #111827; color: #fff; }
         .login-box button { width: 100%; padding: 12px; background: #fbbf24; color: #000; border: none; border-radius: 6px; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         .login-box button:hover { background: #f59e0b; }
-        
+        .login-box .link-register { display: block; text-align: center; margin-top: 14px; font-size: 12px; color: #9ca3af; }
+        .login-box .link-register a { color: #fbbf24; cursor: pointer; font-weight: 700; text-decoration: none; }
+        .login-box .link-register a:hover { color: #f59e0b; text-decoration: underline; }
+        #register-overlay { position: fixed; inset: 0; background: #111827; z-index: 5001; display: none; align-items: center; justify-content: center; }
+        #register-overlay.active { display: flex; }
+        .register-box { background: #1f2937; padding: 30px; border-radius: 10px; width: 380px; border-top: 4px solid #10b981; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .register-box h2 { color: #10b981; text-align: center; margin-bottom: 6px; font-style: italic; font-weight: 900; }
+        .register-box p.subtitle { color: #6b7280; text-align: center; font-size: 12px; margin-bottom: 20px; }
+        .register-box input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #374151; background: #111827; color: #fff; font-size: 14px; }
+        .register-box input:focus { border-color: #10b981; outline: none; }
+        .register-box .btn-register { width: 100%; padding: 12px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-weight: 800; cursor: pointer; text-transform: uppercase; font-size: 13px; transition: 0.2s; }
+        .register-box .btn-register:hover { background: #059669; }
+        .register-box .btn-register:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+        .register-box .link-login { display: block; text-align: center; margin-top: 14px; font-size: 12px; color: #9ca3af; }
+        .register-box .link-login a { color: #fbbf24; cursor: pointer; font-weight: 700; text-decoration: none; }
+        .register-box .link-login a:hover { color: #f59e0b; text-decoration: underline; }
+        .register-box .reg-error { color: #ef4444; font-size: 12px; margin-top: 8px; text-align: center; display: none; font-weight: bold; }
+        .register-box .reg-success { color: #10b981; font-size: 12px; margin-top: 8px; text-align: center; display: none; font-weight: bold; }
+        .register-box hr { border: none; border-top: 1px solid #374151; margin: 14px 0; }
+        .register-box .field-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #6b7280; display: block; margin-bottom: 4px; }
+
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal.active { display: flex; }
         .modal-box { background: var(--surface); width: 450px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
@@ -117,7 +137,7 @@
         .funil-type-btn { padding:6px 14px; border:1px solid #e5e7eb; background:#fff; color:#4b5563; font-size:11px; font-weight:700; cursor:pointer; border-radius:6px; text-transform:uppercase; transition:0.15s; }
         .funil-type-btn:hover { background:#f3f4f6; }
         .funil-type-btn.active { background:#1f2937; color:#fbbf24; border-color:#1f2937; }
-        .card-obs-preview { font-size:10px; color:#6b7280; background:#f9fafb; border-top:1px dashed #e5e7eb; margin-top:8px; padding-top:6px; cursor:pointer; line-height:1.4; }
+        .card-obs-preview { font-size:10px; color:#6b7280; background:#f9fafb; border-top:1px dashed #e5e7eb; margin-top:5px; padding-top:4px; cursor:pointer; line-height:1.3; }
         .card-obs-preview:hover { color:#374151; }
         .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 700; font-size: 11px; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-main { background: #fbbf24; color: #000; }
@@ -156,8 +176,35 @@
         .gestor-only { display: none !important; }
         .show-gestor { display: inline-flex !important; }
         
-        .card-action { margin-top: 8px; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #f3f4f6; }
+        .card-action { margin-top: 5px; padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: #f3f4f6; line-height: 1.4; }
         #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fbbf24; padding: 10px 20px; border-radius: 8px; opacity: 0; transition: .3s; z-index: 3000; font-weight: 700; font-size: 12px; }
+
+        /* ── Dropdown Ações Funil ── */
+        .dropdown-actions { position: relative; display: inline-block; }
+        .dropdown-actions-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: #1f2937; border-radius: 8px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 999; overflow: hidden; }
+        .dropdown-actions-menu.open { display: block; animation: fadeIn 0.15s; }
+        .dropdown-actions-menu button { width: 100%; padding: 12px 16px; background: none; border: none; color: #e2e8f0; text-align: left; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #374151; transition: 0.15s; text-transform: uppercase; }
+        .dropdown-actions-menu button:last-child { border-bottom: none; }
+        .dropdown-actions-menu button:hover { background: #374151; color: #fbbf24; }
+        .btn-actions-toggle { background: #1f2937; color: #fbbf24; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 800; font-size: 11px; cursor: pointer; display: none; align-items: center; gap: 6px; text-transform: uppercase; transition: 0.2s; }
+        .btn-actions-toggle:hover { background: #374151; }
+
+        /* ── Bulk Delete ── */
+        .card-checkbox-wrap { position: absolute; top: 8px; left: 8px; z-index: 10; display: none; }
+        .card-checkbox-wrap input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #ef4444; }
+        .bulk-mode .card-checkbox-wrap { display: block; }
+        .bulk-mode .card { position: relative; padding-left: 34px; }
+        .card.bulk-selected { border-color: #ef4444 !important; background: #fff5f5 !important; outline: 2px solid #ef4444; }
+        #bulk-bar { display: none; position: sticky; bottom: 16px; left: 0; right: 0; z-index: 500; margin: 10px 20px 0; }
+        #bulk-bar.active { display: flex; }
+        #bulk-bar-inner { background: #1f2937; color: #fff; padding: 12px 20px; border-radius: 10px; display: flex; align-items: center; gap: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); flex: 1; flex-wrap: wrap; }
+        #bulk-bar-inner span { font-size: 13px; font-weight: 800; flex: 1; }
+        .btn-bulk-cancel { background: #374151; color: #9ca3af; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .btn-bulk-cancel:hover { background: #4b5563; }
+        .btn-bulk-delete { background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 800; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .btn-bulk-delete:hover { background: #dc2626; }
+        .btn-bulk-select-all { background: #fbbf24; color: #000; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .btn-bulk-select-all:hover { background: #f59e0b; }
 
         @media (max-width: 900px) { .grid-2-col { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
@@ -179,6 +226,28 @@
                 <button type="submit" id="login-btn">Entrar no Sistema</button>
                 <div id="login-error" style="color:#ef4444;font-size:12px;margin-top:10px;text-align:center;display:none;font-weight:bold;">Credenciais inválidas.</div>
             </form>
+            <div class="link-register">Novo por aqui? <a onclick="APP.showRegister()">Cadastrar nova empresa</a></div>
+        </div>
+    </div>
+
+    <!-- TELA DE CADASTRO DE NOVA EMPRESA -->
+    <div id="register-overlay">
+        <div class="register-box">
+            <h2>🌱 Nova Empresa</h2>
+            <p class="subtitle">Crie sua conta e comece a usar o Trail System agora</p>
+            <label class="field-label">Nome da Empresa</label>
+            <input type="text" id="reg-company" placeholder="Ex: Agro Minas Distribuidora" required>
+            <hr>
+            <label class="field-label">Seu Nome (Administrador)</label>
+            <input type="text" id="reg-name" placeholder="Seu nome completo" required>
+            <label class="field-label">E-mail de Acesso</label>
+            <input type="email" id="reg-email" placeholder="seu@email.com.br" required>
+            <label class="field-label">Senha (mínimo 6 caracteres)</label>
+            <input type="password" id="reg-password" placeholder="Crie uma senha segura" required>
+            <button class="btn-register" id="reg-btn" onclick="APP.registerCompany()">Criar Minha Empresa</button>
+            <div class="reg-error" id="reg-error"></div>
+            <div class="reg-success" id="reg-success"></div>
+            <div class="link-login">Já tem conta? <a onclick="APP.showLogin()">Fazer login</a></div>
         </div>
     </div>
 
@@ -382,26 +451,53 @@
             </section>
 
             <section id="tab-funil" class="tab-content">
-                <!-- Toolbar -->
-                <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <h3 style="font-weight:900;">MEU FUNIL</h3>
-                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <input id="funil-search" type="text" placeholder="🔍 Filtrar por cliente..." oninput="APP.renderKanban()" style="padding:7px 10px; border:1px solid #d1d5db; border-radius:6px; font-size:12px; width:180px;">
-                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:7px 10px; border-radius:6px; border:1px solid #d1d5db; font-size:12px;"></select>
-                        <button onclick="APP.prepareDeal()" class="btn btn-main">+ Nova Oportunidade</button>
+                <!-- ── FUNIL HEADER ── -->
+                <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px 18px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,.05);">
+                    <!-- Linha 1: título + botão principal + engrenagem -->
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="background:#fbbf24; border-radius:8px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">⚡</div>
+                            <div>
+                                <div style="font-weight:900; font-size:15px; color:#111827; line-height:1.1;">MEU FUNIL</div>
+                                <div style="font-size:10px; color:#9ca3af; font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:1px;">Oportunidades de Venda</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <button onclick="APP.prepareDeal()" class="btn btn-main">＋ Nova Oportunidade</button>
+                            <div class="dropdown-actions" id="funil-actions-dropdown" style="display:none;">
+                                <button class="btn-actions-toggle" id="btn-funil-actions" onclick="APP.toggleFunilActions(event)" style="display:inline-flex; padding:8px 11px; font-size:14px;" title="Ações de gestão">⚙️</button>
+                                <div class="dropdown-actions-menu" id="funil-actions-menu">
+                                    <button onclick="APP.toggleFunilActions(); APP.toggleBulkMode()">☑️ Selecionar em Lote</button>
+                                    <button onclick="APP.toggleFunilActions(); APP.prepareImportFunil()">📥 Importar Backup</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Linha 2: filtros + tipo -->
+                    <div style="display:flex; gap:8px; align-items:center; margin-top:12px; padding-top:12px; border-top:1px solid #f3f4f6; flex-wrap:wrap;">
+                        <input id="funil-search" type="text" placeholder="🔍 Filtrar por cliente..." oninput="APP.renderKanban()" style="padding:7px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; min-width:170px; flex:1; background:#f9fafb;">
+                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:7px 10px; border-radius:8px; border:1px solid #e5e7eb; font-size:12px; background:#f9fafb;"></select>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                            <button class="funil-type-btn active" onclick="APP.setFunilType('todos')"       id="ftype-todos">Todos</button>
+                            <button class="funil-type-btn"        onclick="APP.setFunilType('maquina')"    id="ftype-maquina">🚜 Máquinas</button>
+                            <button class="funil-type-btn"        onclick="APP.setFunilType('implemento')" id="ftype-implemento">🔧 Implementos</button>
+                            <button class="funil-type-btn"        onclick="APP.setFunilType('outros')"     id="ftype-outros">📦 Outros</button>
+                            <button class="funil-type-btn"        onclick="APP.setFunilType('consorcio')"  id="ftype-consorcio">📄 Consórcios</button>
+                        </div>
                     </div>
                 </div>
                 <!-- Resumo rápido -->
                 <div id="funil-summary" style="display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap;"></div>
-                <!-- Toggle tipo -->
-                <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
-                    <button class="funil-type-btn active" onclick="APP.setFunilType('todos')" id="ftype-todos">Todos</button>
-                    <button class="funil-type-btn" onclick="APP.setFunilType('maquina')" id="ftype-maquina">🚜 Máquinas</button>
-                    <button class="funil-type-btn" onclick="APP.setFunilType('implemento')" id="ftype-implemento">🔧 Implementos</button>
-                    <button class="funil-type-btn" onclick="APP.setFunilType('outros')" id="ftype-outros">📦 Outros</button>
-                    <button class="funil-type-btn" onclick="APP.setFunilType('consorcio')" id="ftype-consorcio">📄 Consórcios</button>
-                </div>
                 <div id="kanban-board" class="kanban-board"></div>
+                <!-- Bulk Delete Bar -->
+                <div id="bulk-bar">
+                    <div id="bulk-bar-inner">
+                        <span id="bulk-count-label">0 itens selecionados</span>
+                        <button class="btn-bulk-select-all" onclick="APP.bulkSelectAll()">✅ Selecionar Todos</button>
+                        <button class="btn-bulk-cancel" onclick="APP.toggleBulkMode()">✖ Cancelar</button>
+                        <button class="btn-bulk-delete" onclick="APP.bulkDeleteSelected()">🗑️ Excluir Selecionados</button>
+                    </div>
+                </div>
             </section>
 
             <section id="tab-clientes" class="tab-content">
@@ -538,6 +634,58 @@
     </div>
 
     <!-- MODAL IMPORTAÇÃO DE ESTOQUE -->
+    <div id="modal-import-funil" class="modal">
+        <div class="modal-box" style="width:780px; max-width:96vw;">
+            <h3>📥 Importar Funil de Vendas (Backup Excel)</h3>
+
+            <!-- Passo 1: upload -->
+            <div id="funil-import-step-1">
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:12px; margin:15px 0; font-size:12px; color:#1e40af;">
+                    <strong>Como funciona:</strong><br><br>
+                    Selecione o arquivo <b>.xlsx</b> gerado pelo <b>Backup Excel</b> do Trail System.<br>
+                    O sistema vai ler a aba <b>"Negócios"</b> e importar os deals usando o <b>ID</b> para evitar duplicatas.<br><br>
+                    <span style="color:#6b7280;">• Negócios com ID já existente no banco serão <b>ignorados</b> (não sobrescreve).</span><br>
+                    <span style="color:#6b7280;">• Negócios sem ID ou com ID novo serão <b>criados</b>.</span><br>
+                    <span style="color:#dc2626;">• Apenas gestores podem realizar esta operação.</span>
+                </div>
+                <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                    <label style="display:flex; flex-direction:column; flex:1; min-width:200px; font-size:10px; font-weight:800; text-transform:uppercase; color:#4b5563; gap:4px;">
+                        Selecionar arquivo de Backup (.xlsx)
+                        <input type="file" id="funil-import-file" accept=".xlsx,.xls" onchange="APP.handleFunilImportFile(event)" style="padding:8px; border:1px solid #d1d5db; border-radius:6px; background:#fff; font-size:12px;">
+                    </label>
+                </div>
+                <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:15px;">Cancelar</button>
+            </div>
+
+            <!-- Passo 2: preview -->
+            <div id="funil-import-step-2" style="display:none;">
+                <div id="funil-import-summary" style="margin:12px 0; font-size:12px; font-weight:700; color:#1f2937; display:flex; gap:10px; flex-wrap:wrap;"></div>
+                <div style="max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:8px;">
+                    <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                        <thead>
+                            <tr style="background:#1f2937; color:#fbbf24; position:sticky; top:0; z-index:1;">
+                                <th style="padding:8px 10px; text-align:left;">#</th>
+                                <th style="padding:8px 10px; text-align:left;">Cliente</th>
+                                <th style="padding:8px 10px; text-align:left;">Etapa</th>
+                                <th style="padding:8px 10px; text-align:left;">Tipo</th>
+                                <th style="padding:8px 10px; text-align:left;">Valor</th>
+                                <th style="padding:8px 10px; text-align:left;">Responsável</th>
+                                <th style="padding:8px 10px; text-align:left;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="funil-import-preview-body"></tbody>
+                    </table>
+                </div>
+                <div id="funil-import-errors" style="display:none; margin-top:10px; background:#fff5f5; border:1px solid #fecaca; border-radius:6px; padding:10px; font-size:11px; color:#991b1b;"></div>
+                <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
+                    <button type="button" onclick="APP.confirmImportFunil()" id="btn-confirm-funil-import" class="btn btn-main" style="flex:1;">✅ Confirmar Importação</button>
+                    <button type="button" onclick="APP.resetFunilImportModal()" class="btn" style="flex:1;">↩️ Outro arquivo</button>
+                    <button type="button" onclick="APP.closeModals()" class="btn btn-danger">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-import-stock" class="modal">
         <div class="modal-box" style="width:720px; max-width:95vw;">
             <h3>📥 Importar Estoque por Planilha</h3>
@@ -866,6 +1014,120 @@
                 setTimeout(() => APP.loadUser(data.user), 500);
             },
 
+            showRegister: () => {
+                document.getElementById('user-overlay').style.display = 'none';
+                document.getElementById('register-overlay').classList.add('active');
+                document.getElementById('reg-error').style.display = 'none';
+                document.getElementById('reg-success').style.display = 'none';
+            },
+
+            showLogin: () => {
+                document.getElementById('register-overlay').classList.remove('active');
+                document.getElementById('user-overlay').style.display = 'flex';
+                document.getElementById('login-btn').innerText = 'Entrar no Sistema';
+                document.getElementById('login-error').style.display = 'none';
+            },
+
+            registerCompany: async () => {
+                const companyName = document.getElementById('reg-company').value.trim();
+                const userName    = document.getElementById('reg-name').value.trim();
+                const email       = document.getElementById('reg-email').value.trim();
+                const password    = document.getElementById('reg-password').value;
+                const btn         = document.getElementById('reg-btn');
+                const errEl       = document.getElementById('reg-error');
+                const okEl        = document.getElementById('reg-success');
+
+                errEl.style.display = 'none';
+                okEl.style.display  = 'none';
+
+                if (!companyName || !userName || !email || !password) {
+                    errEl.textContent = 'Preencha todos os campos.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                if (password.length < 6) {
+                    errEl.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+                    errEl.style.display = 'block';
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.textContent = 'Criando conta...';
+
+                try {
+                    // 1. Garante que não há sessão ativa (para o insert chegar como anon)
+                    await dbClient.auth.signOut();
+
+                    // 2. Gera slug único
+                    const baseSlug = companyName
+                        .toLowerCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-|-$/g, '');
+                    const uniqueSlug = baseSlug + '-' + Math.random().toString(36).substring(2, 7);
+
+                    // 3. Cria empresa via REST direto como anon (sem JWT de usuário)
+                    btn.textContent = 'Criando empresa...';
+                    const supabaseUrl  = dbClient.supabaseUrl;
+                    const supabaseAnon = dbClient.supabaseKey;
+
+                    const restResp = await fetch(`${supabaseUrl}/rest/v1/companies`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': supabaseAnon,
+                            'Authorization': `Bearer ${supabaseAnon}`,
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({ name: companyName, slug: uniqueSlug, plan: 'trial' })
+                    });
+
+                    if (!restResp.ok) {
+                        const errBody = await restResp.json().catch(() => ({}));
+                        throw new Error('Erro ao criar empresa: ' + (errBody.message || restResp.statusText));
+                    }
+
+                    const companyArr = await restResp.json();
+                    const companyId  = companyArr[0]?.id;
+                    if (!companyId) throw new Error('Empresa criada mas sem ID retornado.');
+
+                    // 4. Cria usuário no Auth
+                    btn.textContent = 'Criando acesso...';
+                    const { data: authData, error: authErr } = await dbClient.auth.signUp({ email, password });
+                    if (authErr) throw new Error(authErr.message);
+
+                    const authUser = authData.user;
+                    if (!authUser) throw new Error('Falha ao criar autenticação. Tente novamente.');
+
+                    // 5. Faz login para estabelecer sessão
+                    btn.textContent = 'Configurando conta...';
+                    const { error: signInErr } = await dbClient.auth.signInWithPassword({ email, password });
+                    if (signInErr) throw new Error('Erro ao iniciar sessão: ' + signInErr.message);
+
+                    // 6. Cria perfil gestor (agora autenticado)
+                    const { error: userErr } = await dbClient.from('users').insert({
+                        name:       userName,
+                        auth_id:    authUser.id,
+                        role:       'gestor',
+                        company_id: companyId,
+                        goal:       0
+                    });
+                    if (userErr) throw new Error('Erro ao criar perfil: ' + userErr.message);
+
+                    // 7. Sucesso
+                    btn.textContent = 'Entrando...';
+                    document.getElementById('register-overlay').classList.remove('active');
+                    APP.loadUser(authUser);
+
+                } catch (err) {
+                    errEl.textContent = err.message;
+                    errEl.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Criar Minha Empresa';
+                    await dbClient.auth.signOut();
+                }
+            },
+
             loadUser: async (authUser) => {
                 try {
                     const { data: profiles, error } = await dbClient.from('users').select('*').eq('auth_id', authUser.id);
@@ -912,6 +1174,7 @@
                     document.querySelectorAll('.admin-only').forEach(el => el.style.display = APP.user.role === 'gestor' ? 'flex' : 'none');
                     const btnMigrate = document.getElementById('btn-migrate-cities');
                     if (btnMigrate) btnMigrate.style.display = APP.user.role === 'gestor' ? 'block' : 'none';
+                    // Dropdown ações funil — visível apenas para gestor (controlado pelo nav)
                 }
             },
 
@@ -1006,6 +1269,16 @@
                 
                 document.getElementById('page-title').innerText = tab.toUpperCase();
 
+                // Dropdown Ações — aparece no funil apenas para gestor
+                const isG = APP.user && (APP.user.role === 'gestor' || APP.user.role === 'assistente');
+                const dropdownEl = document.getElementById('funil-actions-dropdown');
+                if (dropdownEl) dropdownEl.style.display = (tab === 'funil' && APP.user && APP.user.role === 'gestor') ? 'inline-block' : 'none';
+                // Fecha o menu se estiver aberto ao trocar de aba
+                const menuEl = document.getElementById('funil-actions-menu');
+                if (menuEl) menuEl.classList.remove('open');
+                // Se sair do funil, encerra modo bulk
+                if (tab !== 'funil' && APP.bulkMode) APP.toggleBulkMode();
+
                 if(tab==='estoque') APP.renderStock();
                 if(tab==='funil') APP.renderKanban();
                 if(tab==='relatorios') APP.renderReports();
@@ -1034,6 +1307,89 @@
             },
 
             funilType: 'todos',
+            bulkMode: false,
+            selectedDealIds: new Set(),
+
+            toggleFunilActions: (e) => {
+                if (e) e.stopPropagation();
+                const menu = document.getElementById('funil-actions-menu');
+                if (menu) menu.classList.toggle('open');
+            },
+
+            toggleBulkMode: () => {
+                APP.bulkMode = !APP.bulkMode;
+                APP.selectedDealIds.clear();
+                const board = document.getElementById('kanban-board');
+                const bar   = document.getElementById('bulk-bar');
+                if (APP.bulkMode) {
+                    board.classList.add('bulk-mode');
+                    bar.classList.add('active');
+                } else {
+                    board.classList.remove('bulk-mode');
+                    bar.classList.remove('active');
+                }
+                APP.updateBulkBar();
+                APP.renderKanban();
+            },
+
+            updateBulkBar: () => {
+                const n = APP.selectedDealIds.size;
+                const label = document.getElementById('bulk-count-label');
+                if (label) label.textContent = `${n} ${n === 1 ? 'item selecionado' : 'itens selecionados'}`;
+            },
+
+            toggleDealSelect: (id, checked) => {
+                if (checked) APP.selectedDealIds.add(id);
+                else APP.selectedDealIds.delete(id);
+                // update card visual
+                const card = document.querySelector(`.card[data-deal-id="${id}"]`);
+                if (card) card.classList.toggle('bulk-selected', checked);
+                APP.updateBulkBar();
+            },
+
+            bulkSelectAll: () => {
+                document.querySelectorAll('.card[data-deal-id]').forEach(card => {
+                    const id = card.dataset.dealId;
+                    APP.selectedDealIds.add(id);
+                    card.classList.add('bulk-selected');
+                    const cb = card.querySelector('.bulk-cb');
+                    if (cb) cb.checked = true;
+                });
+                APP.updateBulkBar();
+            },
+
+            bulkDeleteSelected: async () => {
+                if (APP.user.role !== 'gestor') return alert('Acesso negado.');
+                const ids = [...APP.selectedDealIds];
+                if (ids.length === 0) return alert('Nenhum item selecionado.');
+                const ok = await APP.confirm(
+                    `Serão excluídos ${ids.length} negócio(s). Esta ação não pode ser desfeita.`,
+                    'Excluir em Lote?', '🗑️', 'Excluir Tudo'
+                );
+                if (!ok) return;
+                let erros = 0;
+                for (const id of ids) {
+                    const deal = APP.data.deals.find(d => String(d.id) === String(id));
+                    const { error } = await dbClient.from('deals').delete().eq('id', id);
+                    if (error) { erros++; continue; }
+                    if (deal && deal.stock_id) {
+                        const s = APP.data.stock.find(x => x.id === deal.stock_id);
+                        if (s && (s.status === 'Reservado' || s.status === 'Em Disputa')) {
+                            const newHist = APP.addLog(s, 'Liberação', 'Oportunidade excluída em lote');
+                            await dbClient.from('stock').update({status: 'Disponível', history: newHist}).eq('id', s.id);
+                        }
+                    }
+                }
+                APP.toast(erros > 0 ? `${ids.length - erros} excluídos, ${erros} com erro.` : `${ids.length} excluídos com sucesso!`);
+                APP.selectedDealIds.clear();
+                APP.bulkMode = false;
+                const board = document.getElementById('kanban-board');
+                const bar   = document.getElementById('bulk-bar');
+                if (board) board.classList.remove('bulk-mode');
+                if (bar)   bar.classList.remove('active');
+                await APP.reloadTable('deals');
+                await APP.reloadTable('stock');
+            },
 
             updateAgendaBadge: () => {
                 if (!APP.user) return;
@@ -1162,13 +1518,13 @@
                             const typeBorder= d.deal_type === 'implemento' ? '#bfdbfe' : d.deal_type === 'outros' ? '#ddd6fe' : '#e5e7eb';
                             const typeColor = d.deal_type === 'implemento' ? '#1d4ed8' : d.deal_type === 'outros' ? '#6d28d9' : '#1f2937';
                             productDisplay = s
-                                ? `<div style="font-size:10px; font-weight:700; color:${typeColor}; background:${typeBg}; padding:2px 5px; border-radius:3px; margin-bottom:6px; display:inline-block; border:1px solid ${typeBorder};">${typeIcon} ${s.model}</div>`
-                                : `<div style="font-size:10px; font-weight:700; color:#6b7280; background:#f3f4f6; padding:2px 5px; border-radius:3px; margin-bottom:6px; display:inline-block;">${typeIcon} Sem máquina</div>`;
+                                ? `<div style="font-size:10px; font-weight:700; color:${typeColor}; background:${typeBg}; padding:1px 5px; border-radius:3px; display:inline-block; border:1px solid ${typeBorder}; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${typeIcon} ${s.model}</div>`
+                                : `<div style="font-size:10px; font-weight:700; color:#6b7280; background:#f3f4f6; padding:1px 5px; border-radius:3px; display:inline-block;">${typeIcon} Sem máquina</div>`;
                         } else if(d.deal_type === 'consorcio') {
-                            productDisplay = `<div style="font-size:10px; font-weight:700; color:#059669; background:#ecfdf5; padding:2px 5px; border-radius:3px; margin-bottom:6px; display:inline-block; border:1px solid #a7f3d0;">📄 Consórcio</div>`;
+                            productDisplay = `<div style="font-size:10px; font-weight:700; color:#059669; background:#ecfdf5; padding:1px 5px; border-radius:3px; display:inline-block; border:1px solid #a7f3d0;">📄 Consórcio</div>`;
                         } else {
                             const typeIcon = d.deal_type === 'implemento' ? '🔧' : d.deal_type === 'outros' ? '📦' : '🚜';
-                            productDisplay = `<div style="font-size:10px; font-weight:700; color:#6b7280; background:#f3f4f6; padding:2px 5px; border-radius:3px; margin-bottom:6px; display:inline-block;">${typeIcon} Sem estoque vinculado</div>`;
+                            productDisplay = `<div style="font-size:10px; font-weight:700; color:#6b7280; background:#f3f4f6; padding:1px 5px; border-radius:3px; display:inline-block;">${typeIcon} Sem estoque vinculado</div>`;
                         }
 
                         // Próxima ação
@@ -1202,20 +1558,23 @@
                         const dupBtn = `<button onclick="event.stopPropagation(); APP.duplicateDeal('${d.id}')" class="btn-card-icon" title="Duplicar negócio">📋</button>`;
 
                         const card = document.createElement('div');
-                        card.className = `card ${isStagnant ? 'stagnant' : ''}`;
+                        card.className = `card ${isStagnant ? 'stagnant' : ''}${APP.selectedDealIds.has(String(d.id)) ? ' bulk-selected' : ''}`;
+                        card.dataset.dealId = d.id;
                         card.draggable = true;
                         card.innerHTML = `
-                            <div class="card-tags">
-                                <span class="tag">👤 ${d.owner}</span>
-                                <div class="card-btn-group">
-                                    <button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Ver Histórico">📜 Histórico</button>
+                            <div class="card-checkbox-wrap"><input type="checkbox" class="bulk-cb" ${APP.selectedDealIds.has(String(d.id)) ? 'checked' : ''} onclick="event.stopPropagation(); APP.toggleDealSelect('${d.id}', this.checked)"></div>
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:4px; margin-bottom:4px;">
+                                <div style="font-weight:900; font-size:13px; color:#111827; line-height:1.2; flex:1;">${d.client}</div>
+                                <div class="card-btn-group" style="flex-shrink:0;">
+                                    <button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button>
                                     ${dupBtn}
                                     ${delBtn}
                                 </div>
                             </div>
-                            <div style="font-weight:900; font-size:14px; margin-bottom:4px; color:#111827;">${d.client}</div>
-                            ${productDisplay}
-                            <div style="font-weight:700; color:#4b5563;">${fmt(d.value||0)}</div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:${actionHtml || obsHtml ? '5px' : '0'};">
+                                ${productDisplay}
+                                <div style="font-weight:800; font-size:12px; color:#374151; white-space:nowrap;">${fmt(d.value||0)}</div>
+                            </div>
                             ${actionHtml}
                             ${obsHtml}
                         `;
@@ -1236,8 +1595,8 @@
 
             prepareDeal: (preselectedStockId = null) => {
                 document.getElementById('deal-id').value = '';
+                // Stock select é populado pelo refreshStockSelect após definir o tipo
                 const sel = document.getElementById('deal-stock'); sel.innerHTML = '<option value="">Sem Máquina</option>';
-                APP.data.stock.filter(s => s.status !== 'Vendido').forEach(s => { const selected = preselectedStockId === s.id ? 'selected' : ''; sel.innerHTML += `<option value="${s.id}" ${selected}>${s.model} - R$ ${s.cost}</option>`; });
                 
                 const dl = document.getElementById('list-clients');
                 dl.innerHTML = APP.data.clients.map(c => `<option value="${c.name}">`).join('');
@@ -1262,6 +1621,8 @@
                     ownerSelect.innerHTML = `<option value="${APP.user.name}" selected>${APP.user.name}</option>`;
                 }
                 APP.modal('modal-deal');
+                // Popula o select de estoque filtrado pelo tipo atual (após modal abrir)
+                APP.refreshStockSelect(preselectedStockId);
             },
 
             saveDeal: async (e) => {
@@ -1298,7 +1659,7 @@
                             if (err1) console.error("Erro ao atualizar cidade do cliente", err1);
                         }
                     } else {
-                        const { error: err2 } = await dbClient.from('clients').insert({ name: clientName, obs: cityInput });
+                        const { error: err2 } = await dbClient.from('clients').insert({ name: clientName, obs: cityInput, company_id: APP.user.company_id });
                         if (err2) console.error("Erro ao criar novo cliente", err2);
                     }
                 }
@@ -1343,6 +1704,7 @@
                     if(error) return alert("Erro ao atualizar oportunidade: " + error.message);
                 } else {
                     dealData.stage = 'prospeccao';
+                    dealData.company_id = APP.user.company_id;
                     dealData.history = [{date: new Date().toISOString(), user: APP.user.name, action: 'Criação', detail: 'Oportunidade criada'}];
                     if(dealData.next_date) {
                         const dateBr = dealData.next_date.split('-').reverse().join('/');
@@ -1433,6 +1795,7 @@
                     stage:     'prospeccao',
                     next_date: d.next_date || null,
                     next_desc: d.next_desc || null,
+                    company_id: APP.user.company_id,
                     history:   [{ date: new Date().toISOString(), user: APP.user.name, action: 'Criação', detail: `Duplicado do negócio de ${d.client}` }]
                 };
                 const { error } = await dbClient.from('deals').insert(clone);
@@ -1617,6 +1980,7 @@
                     if (error) return alert("Erro ao atualizar estoque: " + error.message);
                 } else {
                     s.status = 'Disponível'; s.date_entry = new Date().toISOString(); s.history = [{date:new Date().toISOString(),user:APP.user.name,action:'Criação',detail:'Manual'}];
+                    s.company_id = APP.user.company_id;
                     const { error } = await dbClient.from('stock').insert(s);
                     if (error) return alert("Erro ao inserir estoque: " + error.message);
                 }
@@ -1644,7 +2008,49 @@
                     await APP.reloadTable('stock');
                 }
             },
-            toggleStock: () => { const type = document.getElementById('deal-type').value; document.getElementById('div-stock-select').style.display = type === 'consorcio' ? 'none' : 'block'; },
+            toggleStock: () => {
+                const type = document.getElementById('deal-type').value;
+                // Oculta o seletor só para consórcio
+                document.getElementById('div-stock-select').style.display = type === 'consorcio' ? 'none' : 'block';
+                // Atualiza label dinamicamente
+                const lbl = document.querySelector('#div-stock-select label');
+                if(lbl) {
+                    if(type === 'implemento') lbl.innerText = 'Vincular Implemento';
+                    else if(type === 'outros') lbl.innerText = 'Vincular Item';
+                    else lbl.innerText = 'Vincular Máquina';
+                }
+                // Refaz o select filtrado pelo novo tipo
+                APP.refreshStockSelect(document.getElementById('deal-stock').value || null);
+            },
+
+            refreshStockSelect: (preselectedStockId = null) => {
+                const type = document.getElementById('deal-type') ? document.getElementById('deal-type').value : 'maquina';
+                const sel  = document.getElementById('deal-stock');
+                if (!sel) return;
+
+                // Mapeamento: qual tipo de estoque mostrar para cada tipo de negócio
+                const typeMap = {
+                    maquina:    ['Trator'],
+                    implemento: ['Implemento'],
+                    outros:     ['Outros'],
+                };
+                const allowedTypes = typeMap[type]; // undefined = todos (não filtra)
+
+                const available = APP.data.stock.filter(s => {
+                    if (s.status === 'Vendido') return false;
+                    if (allowedTypes) return allowedTypes.includes(s.type);
+                    return true;
+                });
+
+                const placeholder = type === 'implemento' ? 'Sem Implemento' : type === 'outros' ? 'Sem Item' : 'Sem Máquina';
+                sel.innerHTML = `<option value="">${placeholder}</option>`;
+                available.forEach(s => {
+                    // Mostra: Modelo + monobloco (se tiver) — sem preço
+                    const label = s.mono ? `${s.model} — ${s.mono}` : s.model;
+                    const selected = (preselectedStockId && String(preselectedStockId) === String(s.id)) ? 'selected' : '';
+                    sel.innerHTML += `<option value="${s.id}" ${selected}>${label}</option>`;
+                });
+            },
 
             // --- IMPORTAÇÃO DE ESTOQUE POR PLANILHA ---
             _importRows: [],
@@ -1776,6 +2182,7 @@
                     ...r,
                     status: 'Disponível',
                     date_entry: now,
+                    company_id: APP.user.company_id,
                     history: [{ date: now, user: APP.user.name, action: 'Importação', detail: `Importado via planilha` }]
                 }));
 
@@ -1798,6 +2205,184 @@
                 APP.toast(`✅ ${total} item(ns) importados com sucesso!`);
                 await APP.reloadTable('stock');
             },
+
+            // ── IMPORTAÇÃO DO FUNIL ──────────────────────────────────────────
+            prepareImportFunil: () => {
+                if (APP.user.role !== 'gestor') return alert('Acesso negado. Apenas gestores podem importar o funil.');
+                APP._funilImportRows = [];
+                APP.resetFunilImportModal();
+                APP.modal('modal-import-funil');
+            },
+
+            resetFunilImportModal: () => {
+                const fi = document.getElementById('funil-import-file');
+                if (fi) fi.value = '';
+                document.getElementById('funil-import-step-1').style.display = 'block';
+                document.getElementById('funil-import-step-2').style.display = 'none';
+                document.getElementById('funil-import-errors').style.display = 'none';
+                document.getElementById('funil-import-preview-body').innerHTML = '';
+                document.getElementById('funil-import-summary').innerHTML = '';
+                APP._funilImportRows = [];
+            },
+
+            handleFunilImportFile: (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    try {
+                        const wb = XLSX.read(ev.target.result, { type: 'binary' });
+
+                        // Procura aba "Negócios" (aceita variações)
+                        const sheetName = wb.SheetNames.find(n =>
+                            n.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes('negocio')
+                        ) || wb.SheetNames[0];
+
+                        const ws = wb.Sheets[sheetName];
+                        const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+                        if (!raw.length) { alert('Planilha vazia ou sem dados na aba "Negócios".'); return; }
+
+                        // Normaliza nomes de colunas
+                        const norm = s => s.toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+                        const findCol = (sample, variants) => {
+                            const keys = Object.keys(sample);
+                            return keys.find(k => variants.some(v => norm(k).includes(norm(v)))) || null;
+                        };
+                        const sample = raw[0];
+
+                        const colId       = findCol(sample, ['id']);
+                        const colClient   = findCol(sample, ['client','cliente']);
+                        const colStage    = findCol(sample, ['stage','etapa','fase']);
+                        const colValue    = findCol(sample, ['value','valor']);
+                        const colOwner    = findCol(sample, ['owner','responsavel','vendedor']);
+                        const colType     = findCol(sample, ['deal_type','tipo']);
+                        const colSource   = findCol(sample, ['source','origem']);
+                        const colNextDate = findCol(sample, ['next_date','proxima','data_acao']);
+                        const colNextDesc = findCol(sample, ['next_desc','descricao_acao','acao']);
+                        const colCity     = findCol(sample, ['city','cidade']);
+                        const colCreated  = findCol(sample, ['created_at','criado']);
+                        const colClose    = findCol(sample, ['close_date','fechamento','data_fechamento']);
+                        const colStockId  = findCol(sample, ['stock_id','estoque_id']);
+                        const colHistory  = findCol(sample, ['history','historico']);
+
+                        if (!colClient) { alert('Coluna "client" ou "cliente" não encontrada. Verifique se é o backup do Trail System.'); return; }
+
+                        // IDs já existentes no banco
+                        const existingIds = new Set(APP.data.deals.map(d => String(d.id)));
+
+                        const rows = [], erros = [], duplicadas = [];
+
+                        raw.forEach((r, i) => {
+                            const client = (r[colClient] || '').toString().trim();
+                            if (!client) { erros.push(`Linha ${i+2}: Cliente vazio — ignorada.`); return; }
+
+                            const rawId = colId ? (r[colId] || '').toString().trim() : '';
+
+                            if (rawId && existingIds.has(rawId)) {
+                                duplicadas.push(client);
+                                return; // pula — já existe
+                            }
+
+                            // Tenta parsear history (pode estar como JSON string)
+                            let history = [];
+                            if (colHistory && r[colHistory]) {
+                                try { history = JSON.parse(r[colHistory]); } catch(e) { history = []; }
+                            }
+                            if (!history.length) {
+                                history = [{ date: new Date().toISOString(), user: APP.user.name, action: 'Importação', detail: 'Restaurado via backup' }];
+                            }
+
+                            const deal = {
+                                client,
+                                stage:     colStage    ? (r[colStage]    || 'prospeccao').toString().trim()  : 'prospeccao',
+                                value:     colValue    ? APP.parseMoney(r[colValue])                         : 0,
+                                owner:     colOwner    ? (r[colOwner]    || APP.user.name).toString().trim() : APP.user.name,
+                                deal_type: colType     ? (r[colType]     || 'maquina').toString().trim()     : 'maquina',
+                                source:    colSource   ? (r[colSource]   || '').toString().trim()            : '',
+                                next_date: colNextDate ? (r[colNextDate] || null)                            : null,
+                                next_desc: colNextDesc ? (r[colNextDesc] || '').toString().trim()            : '',
+                                city:      colCity     ? (r[colCity]     || null)                            : null,
+                                stock_id:  colStockId  ? (r[colStockId]  || null)                            : null,
+                                history,
+                            };
+
+                            // Preserva created_at e close_date se disponíveis
+                            if (colCreated && r[colCreated]) deal.created_at = r[colCreated];
+                            if (colClose   && r[colClose])   deal.close_date = r[colClose];
+
+                            rows.push(deal);
+                        });
+
+                        APP._funilImportRows = rows;
+
+                        // Preview
+                        const fmt = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+                        const stageLabels = { prospeccao:'Prospecção', analise_credito:'Análise Crédito', documentacao:'Documentação', contrato:'Contrato', af:'A.F. Final', ganho:'Ganho', perdido:'Perdido' };
+                        const tbody = document.getElementById('funil-import-preview-body');
+                        tbody.innerHTML = rows.map((r, i) => `
+                            <tr style="background:${i%2===0?'#fff':'#f9fafb'}; border-bottom:1px solid #f3f4f6;">
+                                <td style="padding:6px 10px; color:#9ca3af;">${i+1}</td>
+                                <td style="padding:6px 10px; font-weight:700;">${r.client}</td>
+                                <td style="padding:6px 10px;">${stageLabels[r.stage]||r.stage}</td>
+                                <td style="padding:6px 10px; color:#6b7280;">${r.deal_type}</td>
+                                <td style="padding:6px 10px; font-weight:700; color:#059669;">${fmt(r.value)}</td>
+                                <td style="padding:6px 10px;">${r.owner}</td>
+                                <td style="padding:6px 10px;"><span style="background:#d1fae5;color:#065f46;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">Novo</span></td>
+                            </tr>`).join('');
+
+                        // Summary
+                        const sumEl = document.getElementById('funil-import-summary');
+                        sumEl.innerHTML = `
+                            <div style="background:#d1fae5; border:1px solid #a7f3d0; padding:8px 14px; border-radius:8px; font-size:12px; color:#065f46;">✅ <b>${rows.length}</b> negócio(s) prontos para importar</div>
+                            ${duplicadas.length ? `<div style="background:#fef3c7; border:1px solid #fde68a; padding:8px 14px; border-radius:8px; font-size:12px; color:#92400e;">⏭️ <b>${duplicadas.length}</b> já existem (serão ignorados)</div>` : ''}
+                            ${erros.length ? `<div style="background:#fee2e2; border:1px solid #fecaca; padding:8px 14px; border-radius:8px; font-size:12px; color:#991b1b;">⚠️ <b>${erros.length}</b> linha(s) inválida(s)</div>` : ''}
+                        `;
+
+                        if (erros.length) {
+                            const errEl = document.getElementById('funil-import-errors');
+                            errEl.style.display = 'block';
+                            errEl.innerHTML = '<strong>Linhas ignoradas:</strong><br>' + erros.join('<br>');
+                        }
+
+                        const btn = document.getElementById('btn-confirm-funil-import');
+                        btn.disabled = rows.length === 0;
+                        document.getElementById('funil-import-step-1').style.display = 'none';
+                        document.getElementById('funil-import-step-2').style.display = 'block';
+
+                    } catch(err) {
+                        alert('Erro ao ler o arquivo. Verifique se é um .xlsx válido gerado pelo Trail System.\n' + err.message);
+                    }
+                };
+                reader.readAsBinaryString(file);
+            },
+
+            confirmImportFunil: async () => {
+                if (!APP._funilImportRows || !APP._funilImportRows.length) return;
+                const btn = document.getElementById('btn-confirm-funil-import');
+                btn.disabled = true;
+                btn.innerText = '⏳ Importando...';
+
+                const BATCH = 50;
+                let total = 0;
+                for (let i = 0; i < APP._funilImportRows.length; i += BATCH) {
+                    const batch = APP._funilImportRows.slice(i, i + BATCH).map(r => ({...r, company_id: APP.user.company_id}));
+                    const { error } = await dbClient.from('deals').insert(batch);
+                    if (error) {
+                        alert(`Erro ao importar lote ${Math.floor(i/BATCH)+1}: ${error.message}`);
+                        btn.disabled = false; btn.innerText = '✅ Confirmar Importação';
+                        return;
+                    }
+                    total += batch.length;
+                    btn.innerText = `⏳ ${total}/${APP._funilImportRows.length} importados...`;
+                }
+
+                APP.closeModals();
+                APP.toast(`✅ ${total} negócio(s) importados com sucesso!`);
+                await APP.reloadTable('deals');
+                APP.renderKanban();
+            },
+            // ── FIM IMPORTAÇÃO FUNIL ─────────────────────────────────────────
 
             downloadImportTemplate: () => {
                 const ws = XLSX.utils.aoa_to_sheet([
@@ -1853,7 +2438,7 @@
                     const { error } = await dbClient.from('clients').update(c).eq('id',id);
                     if (error) return alert("Erro ao atualizar cliente: " + error.message);
                 } else {
-                    const { error } = await dbClient.from('clients').insert(c);
+                    const { error } = await dbClient.from('clients').insert({...c, company_id: APP.user.company_id});
                     if (error) return alert("Erro ao cadastrar cliente: " + error.message);
                 }
                 APP.closeModals(); 
@@ -1918,7 +2503,7 @@
                             return;
                         }
                     }
-                    const { error } = await dbClient.from('users').insert(u);
+                    const { error } = await dbClient.from('users').insert({...u, company_id: APP.user.company_id});
                     if (error) return alert("Erro ao cadastrar utilizador: " + error.message);
                 }
                 APP.closeModals(); APP.toast("Utilizador Salvo!"); await APP.reloadTable('users');
@@ -3005,6 +3590,14 @@
                 const btn = document.getElementById('btn-dark-mode');
                 if(btn) btn.innerText = '☀️';
             }
+            // Fecha dropdown de ações ao clicar fora
+            document.addEventListener('click', (e) => {
+                const menu = document.getElementById('funil-actions-menu');
+                const toggle = document.getElementById('btn-funil-actions');
+                if (menu && menu.classList.contains('open') && !menu.contains(e.target) && e.target !== toggle) {
+                    menu.classList.remove('open');
+                }
+            });
         });
     </script>
 </body></html>
