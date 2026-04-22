@@ -1,214 +1,527 @@
 <!DOCTYPE html><html lang="pt-br"><head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRAIL SYSTEM v4.5 | Professional CRM</title>
+    <title>TMC | Intelligence in Motion</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <style>
-        /* ESTILO INTEGRADO - TRAIL SYSTEM */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        /* TMC — INTELLIGENCE IN MOTION */
         :root {
-            --bg: #f3f4f6; --surface: #fff; --border: #e5e7eb;
-            --text: #1f2937; --text-soft: #6b7280; --text-muted: #9ca3af;
-            --header-bg: #fff; --header-border: #e5e7eb;
-            --th-bg: #f9fafb; --td-border: #f3f4f6;
-            --input-bg: #fff; --input-border: #d1d5db;
-            --card-bg: #fff; --kanban-col-bg: #e5e7eb;
-            --filter-bar-bg: #fff;
+            --bg: #0d0d0f;
+            --surface: #161618;
+            --surface2: #1c1c1f;
+            --border: #252528;
+            --text: #f0f0f0;
+            --text-soft: #8a8a9a;
+            --text-muted: #4a4a5a;
+            --header-bg: #111113;
+            --header-border: #202023;
+            --th-bg: #111113;
+            --td-border: #1c1c1f;
+            --input-bg: #0d0d0f;
+            --input-border: #2a2a2e;
+            --card-bg: #1f1f23;
+            --kanban-col-bg: #111113;
+            --filter-bar-bg: #111113;
+            /* TMC Silver identity */
+            --silver: #c6c6c6;
+            --silver-bright: #f0f0f0;
+            --silver-mid: #d8d8d8;
+            --silver-dim: #787878;
+            --accent: #d4d4d4;
+            --accent-glow: rgba(210,210,210,0.10);
+            --logo-gradient: linear-gradient(135deg, #b8b8b8 0%, #f4f4f4 40%, #ffffff 55%, #c8c8c8 75%, #909090 100%);
+            --chrome-gradient: linear-gradient(135deg, #888 0%, #e8e8e8 50%, #aaa 100%);
         }
         body.dark-mode {
-            --bg: #0f172a; --surface: #1e293b; --border: #334155;
-            --text: #e2e8f0; --text-soft: #94a3b8; --text-muted: #64748b;
-            --header-bg: #1e293b; --header-border: #334155;
-            --th-bg: #1e293b; --td-border: #1e293b;
-            --input-bg: #0f172a; --input-border: #334155;
-            --card-bg: #1e293b; --kanban-col-bg: #1e293b;
-            --filter-bar-bg: #1e293b;
+            --bg: #141414; --surface: #1c1c1c; --border: #2e2e2e;
+            --text: #e8e8e8; --text-soft: #a0a0a0; --text-muted: #606060;
+            --header-bg: #1a1a1a; --header-border: #2a2a2a;
+            --th-bg: #1a1a1a; --td-border: #242424;
+            --input-bg: #141414; --input-border: #333333;
+            --card-bg: #1c1c1c; --kanban-col-bg: #181818;
+            --filter-bar-bg: #1a1a1a;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; outline: 0; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; transition: background 0.3s, color 0.3s; }
-        #sidebar { width: 260px; background: #111827; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: 0.3s; z-index: 1000; }
-        .brand { padding: 25px; text-align: center; background: #000; border-bottom: 2px solid #fbbf24; }
-        .brand h1 { color: #fbbf24; font-size: 20px; font-weight: 900; font-style: italic; }
-        .nav-menu { flex: 1; padding: 20px 0; overflow-y: auto; }
-        .nav-item { width: 100%; padding: 15px 25px; background: none; border: none; color: #9ca3af; text-align: left; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px; text-transform: uppercase; }
-        .nav-item:hover { background: #1f2937; color: #fff; }
-        .nav-item.active { background: #fbbf24; color: #000; border-right: 4px solid #b45309; }
-        .sidebar-footer { padding: 20px; text-align: center; font-size: 11px; color: #6b7280; border-top: 1px solid #1f2937; background: #0f172a; }
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; transition: background 0.3s, color 0.3s; }
+        #sidebar { width: 260px; background: #0e0e0f; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: 0.3s; z-index: 1000; border-right: 1px solid #222224; }
+        .brand { padding: 22px 25px; text-align: center; background: #080809; border-bottom: 1px solid #222224; position: relative; }
+        .brand::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 1px; background: linear-gradient(90deg, transparent, #555, transparent); }
+        .brand h1 { background: var(--logo-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 22px; font-weight: 900; letter-spacing: 5px; font-style: normal; }
+        .brand p { color: #484848; font-size: 8px; letter-spacing: 3px; text-transform: uppercase; margin-top: 4px; }
+        .nav-menu { flex: 1; padding: 12px 0; overflow-y: auto; }
+        .nav-item { width: 100%; padding: 13px 22px; background: none; border: none; color: #606070; text-align: left; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; border-left: 3px solid transparent; }
+        .nav-item:hover { background: #1a1a1f; color: #c0c0d0; border-left-color: #3a3a4a; }
+        .nav-item.active { background: linear-gradient(90deg, #1e1e26, #161619); color: #ffffff; border-left: 3px solid var(--silver-mid); font-weight: 700; }
+        .sidebar-footer { padding: 16px; text-align: center; font-size: 10px; color: #383848; border-top: 1px solid #1e1e22; background: #080809; letter-spacing: 1px; }
         #main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; width: 100%; }
-        header { height: 60px; background: var(--header-bg); border-bottom: 1px solid var(--header-border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+        header { height: 58px; background: var(--header-bg); border-bottom: 1px solid var(--header-border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
         .header-left { display: flex; align-items: center; }
-        .btn-hamburger { display: none; background: none; border: none; font-size: 24px; cursor: pointer; color: #1f2937; margin-right: 15px; }
-        .btn-close-sidebar { display: none; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
-        .viewport { flex: 1; padding: 20px; overflow-y: auto; background: var(--bg); }
+        .btn-hamburger { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: #a0a0a0; margin-right: 15px; }
+        .btn-close-sidebar { display: none; background: none; border: none; color: #a0a0a0; font-size: 20px; cursor: pointer; }
+        .viewport { flex: 1; padding: 24px; overflow-y: auto; background: var(--bg); }
         .tab-content { display: none; height: 100%; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .card-stat { background: var(--surface); padding: 15px; border-radius: 10px; border: 1px solid var(--border); border-top: 4px solid #fbbf24; }
-        .card-stat label { display: block; font-size: 10px; font-weight: 800; color: #6b7280; text-transform: uppercase; }
-        .card-stat .value { font-size: 20px; font-weight: 900; }
-        .data-card { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 20px; }
-        .data-card-header { background: #1f2937; color: #fbbf24; padding: 10px 15px; font-weight: 800; text-transform: uppercase; font-size: 11px; }
+        .tab-content.active { display: block; animation: fadeIn 0.25s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .grid-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .card-stat { background: var(--surface); padding: 18px; border-radius: 8px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+        .card-stat::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: var(--chrome-gradient); opacity: 0.7; }
+        .card-stat label { display: block; font-size: 9px; font-weight: 700; color: #606060; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+        .card-stat .value { font-size: 22px; font-weight: 800; color: #e8e8e8; }
+        .data-card { background: var(--surface); border-radius: 8px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 20px; }
+        .data-card-header { background: #131314; color: #b0b0b0; padding: 11px 16px; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; border-bottom: 1px solid var(--border); }
         
-        .inventory-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .inv-card { background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; }
-        .inv-card.critical { border-color: #ef4444; background: #fff5f5; border-top: 4px solid #ef4444; }
-        .inv-card.dispute { border-color: #f59e0b; background: #fffbeb; border-top: 4px solid #f59e0b; }
-        .inv-card.reserved { border-color: #7c3aed; background: #f5f3ff; border-top: 4px solid #7c3aed; }
-        .inv-label { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #6b7280; margin-bottom: 5px; }
-        .inv-value { font-size: 18px; font-weight: 900; color: #111827; }
+        .inventory-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .inv-card { background: var(--surface); padding: 16px; border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .inv-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, #888, transparent); }
+        .inv-card.critical { border-color: #5a2020; }
+        .inv-card.dispute { border-color: #5a4010; }
+        .inv-card.reserved { border-color: #3a2a5a; }
+        .inv-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #606060; margin-bottom: 6px; letter-spacing: 1px; }
+        .inv-value { font-size: 20px; font-weight: 800; color: #e8e8e8; }
         
-        .kanban-board { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; height: calc(100vh - 200px); }
-        .kanban-col { background: var(--kanban-col-bg); min-width: 280px; max-width: 280px; border-radius: 8px; display: flex; flex-direction: column; }
-        .kanban-header { padding: 12px; font-weight: 800; color: #fff; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; font-size: 11px; }
-        .kanban-list { padding: 8px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 6px; }
-        .card { background: var(--card-bg); padding: 8px 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.08); border-left: 3px solid #111827; cursor: grab; transition: .2s; }
-        .card:active { cursor: grabbing; }
-        .card.dragging { opacity: 0.5; transform: rotate(2deg); }
-        .card.stagnant { border-color: #ef4444; background: #fff5f5; position: relative; }
-        .card.stagnant::after { content: '🕸️'; position: absolute; top: 5px; right: 5px; font-size: 14px; opacity: 0.5; }
+        .kanban-board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 15px; height: calc(100vh - 200px); }
+        .kanban-col { background: #111113; min-width: 285px; max-width: 285px; border-radius: 10px; display: flex; flex-direction: column; border: 1px solid #222224; }
+        .kanban-header { padding: 12px 14px; font-weight: 800; color: #fff; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid rgba(0,0,0,0.3); }
+        .kanban-list { padding: 8px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 7px; }
+
         .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 12px; background: var(--th-bg); font-size: 10px; text-transform: uppercase; color: #4b5563; }
-        td { padding: 12px; font-size: 13px; border-bottom: 1px solid var(--td-border); color: var(--text); }
+        th { text-align: left; padding: 11px 14px; background: var(--th-bg); font-size: 9px; text-transform: uppercase; color: #606060; letter-spacing: 1px; font-weight: 700; border-bottom: 1px solid var(--border); }
+        td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--td-border); color: var(--text); }
+        tr:hover td { background: #1e1e1e; }
         
         .chart-container { position: relative; height: 250px; width: 100%; }
-        #map-container { height: 100%; width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; position: relative; }
+        #map-container { height: 100%; width: 100%; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); position: relative; }
         #map { height: 100%; width: 100%; z-index: 1; }
-        .map-legend { position: absolute; bottom: 20px; right: 20px; background: white; padding: 10px; border-radius: 8px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); max-height: 200px; overflow-y: auto; font-size: 10px; }
+        .map-legend { position: absolute; bottom: 20px; right: 20px; background: #1c1c1c; border: 1px solid #333; padding: 10px; border-radius: 8px; z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); max-height: 200px; overflow-y: auto; font-size: 10px; color: #c8c8c8; }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
         .legend-color { width: 10px; height: 10px; border-radius: 50%; }
-        .map-toggle-group { display: flex; background: #e5e7eb; padding: 3px; border-radius: 6px; }
-        .btn-map-toggle { padding: 4px 10px; border: none; border-radius: 4px; font-size: 10px; font-weight: 800; cursor: pointer; background: transparent; color: #4b5563; transition: 0.2s; }
-        .btn-map-toggle.active { background: #fff; color: #111827; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .map-toggle-group { display: flex; background: #1a1a1a; padding: 3px; border-radius: 6px; border: 1px solid #2e2e2e; }
+        .btn-map-toggle { padding: 4px 10px; border: none; border-radius: 4px; font-size: 10px; font-weight: 700; cursor: pointer; background: transparent; color: #606060; transition: 0.2s; }
+        .btn-map-toggle.active { background: #2a2a2a; color: #e8e8e8; }
         
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; background: var(--filter-bar-bg); padding: 15px; border-radius: 10px; border: 1px solid #e5e7eb; align-items: flex-end; flex-wrap: wrap; }
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; background: var(--filter-bar-bg); padding: 14px; border-radius: 8px; border: 1px solid var(--border); align-items: flex-end; flex-wrap: wrap; }
         .filter-group { flex: 1; min-width: 150px; }
-        .filter-group label { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; color: #4b5563; }
-        .filter-group input, .filter-group select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+        .filter-group label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; color: #606060; letter-spacing: 1px; }
+        .filter-group input, .filter-group select { width: 100%; padding: 8px 10px; border: 1px solid var(--input-border); border-radius: 6px; background: var(--input-bg); color: var(--text); font-size: 13px; }
+        .filter-group input:focus, .filter-group select:focus { border-color: #555; outline: none; }
 
-        .ranking-row { display: flex; justify-content: space-between; padding: 10px 15px; border-bottom: 1px solid #f3f4f6; align-items: center; }
-        .ranking-pos { font-weight: 900; font-size: 14px; color: #fbbf24; background: #1f2937; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; }
+        .ranking-row { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); align-items: center; }
+        .ranking-pos { font-weight: 900; font-size: 12px; color: #e8e8e8; background: linear-gradient(135deg, #2a2a2a, #3a3a3a); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; border: 1px solid #444; }
         .ranking-name { font-weight: 700; font-size: 12px; }
-        .ranking-val { font-weight: 800; font-size: 12px; color: #059669; }
+        .ranking-val { font-weight: 800; font-size: 12px; color: #a0a0a0; }
 
-        #user-overlay { position: fixed; inset: 0; background: #111827; z-index: 5000; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: #1f2937; padding: 30px; border-radius: 10px; width: 350px; border-top: 4px solid #fbbf24; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .login-box h2 { color: #fbbf24; text-align: center; margin-bottom: 20px; font-style: italic; font-weight: 900; }
-        .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #374151; background: #111827; color: #fff; }
-        .login-box button { width: 100%; padding: 12px; background: #fbbf24; color: #000; border: none; border-radius: 6px; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        .login-box button:hover { background: #f59e0b; }
-        .login-box .link-register { display: block; text-align: center; margin-top: 14px; font-size: 12px; color: #9ca3af; }
-        .login-box .link-register a { color: #fbbf24; cursor: pointer; font-weight: 700; text-decoration: none; }
-        .login-box .link-register a:hover { color: #f59e0b; text-decoration: underline; }
-        #register-overlay { position: fixed; inset: 0; background: #111827; z-index: 5001; display: none; align-items: center; justify-content: center; }
+        /* ── LOGIN / REGISTER OVERLAY — TMC Premium ── */
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+        @keyframes grain {
+            0%,100% { transform: translate(0,0); }
+            10% { transform: translate(-2%,-3%); }
+            20% { transform: translate(3%,2%); }
+            30% { transform: translate(-1%,4%); }
+            40% { transform: translate(2%,-1%); }
+            50% { transform: translate(-3%,1%); }
+            60% { transform: translate(1%,3%); }
+            70% { transform: translate(-2%,-2%); }
+            80% { transform: translate(3%,-3%); }
+            90% { transform: translate(-1%,2%); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        @keyframes lineGrow {
+            from { width: 0; }
+            to { width: 60px; }
+        }
+
+        #user-overlay {
+            position: fixed; inset: 0; z-index: 5000;
+            display: flex; align-items: stretch;
+            background: #060607;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        /* ── LEFT HERO PANEL ── */
+        .login-hero {
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: space-between; padding: 60px;
+            background: #080809;
+            position: relative; overflow: hidden;
+        }
+        .login-hero::before {
+            content: ''; position: absolute; inset: -50%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+            opacity: 0.4; animation: grain 8s steps(1) infinite; pointer-events: none;
+        }
+        .login-hero::after {
+            content: ''; position: absolute;
+            top: 0; right: 0; width: 1px; height: 100%;
+            background: linear-gradient(180deg, transparent 0%, #2a2a2a 30%, #2a2a2a 70%, transparent 100%);
+        }
+        .login-hero-top { position: relative; z-index: 1; animation: fadeUp 0.8s ease both; }
+        .login-hero-logo {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: clamp(80px, 12vw, 140px);
+            font-weight: 900; letter-spacing: -2px; line-height: 0.9;
+            background: linear-gradient(135deg, #888 0%, #e0e0e0 35%, #ffffff 50%, #c0c0c0 65%, #707070 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 4s linear infinite;
+        }
+        .login-hero-tagline {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 13px; font-weight: 300; letter-spacing: 6px;
+            text-transform: uppercase; color: #404040; margin-top: 8px;
+        }
+        .login-hero-accent {
+            width: 0; height: 1px; margin-top: 20px;
+            background: linear-gradient(90deg, #888, transparent);
+            animation: lineGrow 1s ease 0.5s both;
+        }
+        .login-hero-middle {
+            position: relative; z-index: 1;
+            animation: fadeUp 0.8s ease 0.3s both; opacity: 0;
+        }
+        .login-hero-headline {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: clamp(28px, 3vw, 42px); font-weight: 700;
+            color: #e8e8e8; line-height: 1.1; letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .login-hero-headline span { color: #606060; }
+        .login-hero-sub {
+            font-size: 13px; color: #3a3a3a; margin-top: 12px;
+            line-height: 1.6; max-width: 340px;
+        }
+        .login-hero-bottom {
+            position: relative; z-index: 1;
+            animation: fadeUp 0.8s ease 0.5s both; opacity: 0;
+        }
+        .login-hero-signature {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+            color: #2a2a2a;
+        }
+
+        /* ── RIGHT FORM PANEL ── */
+        .login-form-panel {
+            width: 420px; flex-shrink: 0;
+            display: flex; flex-direction: column;
+            justify-content: center; padding: 60px 48px;
+            background: #060607; position: relative;
+        }
+        .login-form-panel::before {
+            content: ''; position: absolute; top: 60px; left: 0;
+            width: 1px; height: 40px;
+            background: linear-gradient(180deg, transparent, #888, transparent);
+        }
+        .login-form-label {
+            font-size: 9px; font-weight: 600; letter-spacing: 3px;
+            text-transform: uppercase; color: #383838; margin-bottom: 32px;
+            animation: fadeUp 0.6s ease 0.2s both; opacity: 0;
+        }
+        .login-form-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 32px; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; color: #d0d0d0; margin-bottom: 32px;
+            animation: fadeUp 0.6s ease 0.3s both; opacity: 0;
+        }
+        .login-box {
+            background: transparent; padding: 0; border-radius: 0;
+            width: 100%; border: none; box-shadow: none; position: relative; overflow: visible;
+            animation: fadeUp 0.6s ease 0.4s both; opacity: 0;
+        }
+        .login-box::before { display: none; }
+        .login-box::after { display: none; }
+        .login-box h2 { display: none; }
+        .login-box .login-tagline { display: none; }
+        .login-box input {
+            width: 100%; padding: 14px 16px; margin-bottom: 12px;
+            border-radius: 0; border: none; border-bottom: 1px solid #1e1e1e;
+            background: transparent; color: #e8e8e8; font-size: 14px;
+            font-family: 'DM Sans', sans-serif; transition: 0.3s;
+            letter-spacing: 0.3px;
+        }
+        .login-box input::placeholder { color: #2e2e2e; }
+        .login-box input:focus {
+            border-bottom-color: #666; outline: none;
+            background: rgba(255,255,255,0.02);
+        }
+        .login-box button {
+            width: 100%; padding: 16px; margin-top: 8px;
+            background: transparent; color: #c8c8c8;
+            border: 1px solid #2a2a2a; border-radius: 0;
+            font-weight: 600; cursor: pointer; text-transform: uppercase;
+            font-size: 10px; letter-spacing: 4px; transition: 0.3s;
+            font-family: 'DM Sans', sans-serif; position: relative; overflow: hidden;
+        }
+        .login-box button::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+            transition: 0.5s;
+        }
+        .login-box button:hover {
+            border-color: #555; color: #f0f0f0;
+            background: rgba(255,255,255,0.03);
+        }
+        .login-box button:hover::before { left: 100%; }
+        .login-box .link-register {
+            display: block; text-align: center; margin-top: 24px;
+            font-size: 11px; color: #2a2a2a; letter-spacing: 0.5px;
+        }
+        .login-box .link-register a {
+            color: #484848; cursor: pointer; font-weight: 600;
+            text-decoration: none; transition: 0.2s;
+        }
+        .login-box .link-register a:hover { color: #888; }
+
+        /* ── REGISTER OVERLAY ── */
+        #register-overlay {
+            position: fixed; inset: 0; background: #060607;
+            z-index: 5001; display: none; align-items: stretch;
+            font-family: 'DM Sans', sans-serif;
+        }
         #register-overlay.active { display: flex; }
-        .register-box { background: #1f2937; padding: 30px; border-radius: 10px; width: 380px; border-top: 4px solid #10b981; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .register-box h2 { color: #10b981; text-align: center; margin-bottom: 6px; font-style: italic; font-weight: 900; }
-        .register-box p.subtitle { color: #6b7280; text-align: center; font-size: 12px; margin-bottom: 20px; }
-        .register-box input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 6px; border: 1px solid #374151; background: #111827; color: #fff; font-size: 14px; }
-        .register-box input:focus { border-color: #10b981; outline: none; }
-        .register-box .btn-register { width: 100%; padding: 12px; background: #10b981; color: #fff; border: none; border-radius: 6px; font-weight: 800; cursor: pointer; text-transform: uppercase; font-size: 13px; transition: 0.2s; }
-        .register-box .btn-register:hover { background: #059669; }
-        .register-box .btn-register:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
-        .register-box .link-login { display: block; text-align: center; margin-top: 14px; font-size: 12px; color: #9ca3af; }
-        .register-box .link-login a { color: #fbbf24; cursor: pointer; font-weight: 700; text-decoration: none; }
-        .register-box .link-login a:hover { color: #f59e0b; text-decoration: underline; }
-        .register-box .reg-error { color: #ef4444; font-size: 12px; margin-top: 8px; text-align: center; display: none; font-weight: bold; }
-        .register-box .reg-success { color: #10b981; font-size: 12px; margin-top: 8px; text-align: center; display: none; font-weight: bold; }
-        .register-box hr { border: none; border-top: 1px solid #374151; margin: 14px 0; }
-        .register-box .field-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #6b7280; display: block; margin-bottom: 4px; }
+        .register-box {
+            width: 420px; margin: auto; padding: 56px 48px;
+            background: transparent; border-radius: 0;
+            border: none; border-left: 1px solid #141414;
+            box-shadow: none; position: relative; overflow: visible;
+        }
+        .register-box::before { display: none; }
+        .register-box h2 {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 10px; font-weight: 600; letter-spacing: 4px;
+            text-transform: uppercase; color: #383838; margin-bottom: 8px;
+            background: none; -webkit-text-fill-color: #383838;
+        }
+        .register-box p.subtitle {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 28px; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; color: #d0d0d0;
+            margin-bottom: 32px; text-align: left;
+        }
+        .register-box input {
+            width: 100%; padding: 13px 0; margin-bottom: 4px;
+            border-radius: 0; border: none; border-bottom: 1px solid #1a1a1a;
+            background: transparent; color: #e8e8e8; font-size: 13px;
+            font-family: 'DM Sans', sans-serif; transition: 0.3s;
+        }
+        .register-box input::placeholder { color: #282828; }
+        .register-box input:focus { border-bottom-color: #555; outline: none; }
+        .register-box .btn-register {
+            width: 100%; padding: 15px; margin-top: 16px;
+            background: transparent; color: #c8c8c8; border: 1px solid #2a2a2a;
+            border-radius: 0; font-weight: 600; cursor: pointer;
+            text-transform: uppercase; font-size: 10px; letter-spacing: 4px;
+            transition: 0.3s; font-family: 'DM Sans', sans-serif;
+        }
+        .register-box .btn-register:hover { border-color: #555; color: #f0f0f0; background: rgba(255,255,255,0.03); }
+        .register-box .btn-register:disabled { opacity: 0.3; cursor: not-allowed; }
+        .register-box .link-login { display: block; text-align: center; margin-top: 20px; font-size: 11px; color: #282828; }
+        .register-box .link-login a { color: #484848; cursor: pointer; font-weight: 600; text-decoration: none; transition: 0.2s; }
+        .register-box .link-login a:hover { color: #888; }
+        .register-box .reg-error { color: #c05050; font-size: 12px; margin-top: 10px; text-align: center; display: none; font-weight: 600; }
+        .register-box .reg-success { color: #50c050; font-size: 12px; margin-top: 10px; text-align: center; display: none; font-weight: 600; }
+        .register-box hr { border: none; border-top: 1px solid #141414; margin: 20px 0 16px; }
+        .register-box .field-label { font-size: 9px; font-weight: 600; text-transform: uppercase; color: #303030; display: block; margin-bottom: 0; letter-spacing: 2px; }
 
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        /* ── REGISTER HERO (left side) ── */
+        .register-hero {
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: center; padding: 60px;
+            background: #080809; position: relative; overflow: hidden;
+        }
+        .register-hero::after {
+            content: ''; position: absolute;
+            top: 0; right: 0; width: 1px; height: 100%;
+            background: linear-gradient(180deg, transparent 0%, #1e1e1e 30%, #1e1e1e 70%, transparent 100%);
+        }
+        .register-hero-logo {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: clamp(60px, 10vw, 110px);
+            font-weight: 900; letter-spacing: -2px; line-height: 0.9;
+            background: linear-gradient(135deg, #666 0%, #c0c0c0 40%, #fff 55%, #a0a0a0 70%, #555 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; animation: shimmer 4s linear infinite;
+        }
+        .register-hero-sub {
+            font-size: 9px; letter-spacing: 5px; text-transform: uppercase;
+            color: #303030; margin-top: 10px;
+        }
+        .register-hero-desc {
+            margin-top: 40px; font-size: 13px; color: #2e2e2e;
+            line-height: 1.7; max-width: 320px;
+        }
+        .register-hero-steps { margin-top: 32px; }
+        .register-hero-step {
+            display: flex; align-items: center; gap: 14px;
+            margin-bottom: 16px;
+        }
+        .register-hero-step-num {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 11px; font-weight: 700; letter-spacing: 2px;
+            color: #303030; width: 24px; text-align: center;
+        }
+        .register-hero-step-text { font-size: 12px; color: #2a2a2a; }
+
+        @media (max-width: 900px) {
+            .login-hero, .register-hero { display: none; }
+            .login-form-panel { width: 100%; padding: 48px 32px; }
+            .register-box { width: 100%; border-left: none; padding: 48px 32px; }
+        }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal.active { display: flex; }
-        .modal-box { background: var(--surface); width: 450px; padding: 25px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
+        .modal-box { background: #1a1a1a; width: 450px; padding: 26px; border-radius: 10px; max-height: 90vh; overflow-y: auto; border: 1px solid #2e2e2e; }
         .form-item { margin-bottom: 12px; }
-        .form-item label { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; color: #4b5563; }
-        .form-item input, .form-item select, .form-item textarea { width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 6px; font-size: 14px; background: var(--input-bg); color: var(--text); font-family: inherit; }
+        .form-item label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; color: #606060; letter-spacing: 1px; }
+        .form-item input, .form-item select, .form-item textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--input-border); border-radius: 6px; font-size: 13px; background: var(--input-bg); color: var(--text); font-family: inherit; transition: 0.2s; }
+        .form-item input:focus, .form-item select:focus, .form-item textarea:focus { border-color: #555; outline: none; }
 
-
-        .stock-tab-btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; color: #4b5563; font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
-        .stock-tab-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
-        .stock-tab-btn.active { background: #1f2937; color: #fbbf24; border-color: #1f2937; }
-        .stock-tab-count { background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 10px; font-size: 10px; }
-        .stock-tab-btn:not(.active) .stock-tab-count { background: #f3f4f6; color: #374151; }
-        .funil-type-btn { padding:6px 14px; border:1px solid #e5e7eb; background:#fff; color:#4b5563; font-size:11px; font-weight:700; cursor:pointer; border-radius:6px; text-transform:uppercase; transition:0.15s; }
-        .funil-type-btn:hover { background:#f3f4f6; }
-        .funil-type-btn.active { background:#1f2937; color:#fbbf24; border-color:#1f2937; }
-        .card-obs-preview { font-size:10px; color:#6b7280; background:#f9fafb; border-top:1px dashed #e5e7eb; margin-top:5px; padding-top:4px; cursor:pointer; line-height:1.3; }
-        .card-obs-preview:hover { color:#374151; }
-        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 700; font-size: 11px; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
-        .btn-main { background: #fbbf24; color: #000; }
-        .btn-dark { background: #1f2937; color: #fbbf24; }
+        .stock-tab-btn { padding: 7px 14px; border-radius: 6px; border: 1px solid #2e2e2e; background: #1a1a1a; color: #606060; font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.5px; }
+        .stock-tab-btn:hover { background: #222; color: #a0a0a0; }
+        .stock-tab-btn.active { background: #2a2a2a; color: #e8e8e8; border-color: #444; }
+        .stock-tab-count { background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 10px; font-size: 10px; }
+        .funil-type-btn { padding:6px 13px; border:1px solid #2e2e2e; background:#1a1a1a; color:#606060; font-size:10px; font-weight:700; cursor:pointer; border-radius:6px; text-transform:uppercase; transition:0.15s; letter-spacing:0.5px; }
+        .funil-type-btn:hover { background:#222; color:#a0a0a0; }
+        .funil-type-btn.active { background:#2a2a2a; color:#e8e8e8; border-color:#444; }
+        .card-obs-preview { font-size:10px; color:#606060; background:#181818; border-top:1px dashed #2a2a2a; margin-top:5px; padding-top:4px; cursor:pointer; line-height:1.3; }
+        .card-obs-preview:hover { color:#a0a0a0; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 700; font-size: 11px; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; letter-spacing: 0.5px; transition: 0.2s; }
+        .btn-main { background: linear-gradient(135deg, #242426, #303032); color: #d8d8d8; border: 1px solid #3e3e40; }
+        .btn-main:hover { background: linear-gradient(135deg, #303032, #3e3e40); color: #f0f0f0; border-color: #585858; }
+        .btn-dark { background: #1a1a1a; color: #c8c8c8; border: 1px solid #333; }
+        .btn-dark:hover { background: #222; color: #e8e8e8; }
         .btn-small { padding: 4px 8px; font-size: 10px; }
-        .btn-danger { background: #fee2e2; color: #991b1b; }
-        .btn-whatsapp { background: #25D366; color: #fff; border: 1px solid #20bd5a; font-size: 10px; padding: 4px 8px; text-decoration: none; border-radius: 4px; }
+        .btn-danger { background: #2a1515; color: #c05050; border: 1px solid #3a2020; }
+        .btn-danger:hover { background: #3a1515; }
+        .btn-whatsapp { background: #1a3a22; color: #50c050; border: 1px solid #25D366; font-size: 10px; padding: 4px 8px; text-decoration: none; border-radius: 4px; }
         
-        .badge { padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;}
-        .badge-success { background: #d1fae5; color: #065f46; }
-        .badge-warning { background: #fef3c7; color: #b45309; }
-        .badge-reserved { background: #ede9fe; color: #5b21b6; border: 1px solid #8b5cf6; }
-        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge { padding: 3px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-success { background: #1a2e22; color: #60b060; border: 1px solid #2a3e2a; }
+        .badge-warning { background: #2e2210; color: #b09050; border: 1px solid #3e3210; }
+        .badge-reserved { background: #1e1530; color: #8060c0; border: 1px solid #2e2540; }
+        .badge-danger { background: #2a1515; color: #c05050; border: 1px solid #3a2020; }
         
         .agenda-group { margin-bottom: 20px; }
-        .agenda-group h4 { font-size: 11px; text-transform: uppercase; margin-bottom: 10px; color: #6b7280; font-weight: 800; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
-        .agenda-item { background: #fff; border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; }
-        .agenda-item.delayed { border-left: 4px solid #ef4444; }
-        .agenda-item.today { border-left: 4px solid #f59e0b; }
-        .agenda-item.future { border-left: 4px solid #10b981; }
-        .agenda-date { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-right: 15px; }
+        .agenda-group h4 { font-size: 9px; text-transform: uppercase; margin-bottom: 10px; color: #505050; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 6px; letter-spacing: 1.5px; }
+        .agenda-item { background: var(--surface); border: 1px solid var(--border); padding: 11px 13px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; cursor: pointer; transition: 0.15s; }
+        .agenda-item:hover { border-color: #444; background: #222; }
+        .agenda-item.delayed { border-left: 3px solid #8a3030; }
+        .agenda-item.today { border-left: 3px solid #8a6820; }
+        .agenda-item.future { border-left: 3px solid #2a5a3a; }
+        .agenda-date { font-size: 10px; font-weight: 700; color: #606060; text-transform: uppercase; margin-right: 15px; letter-spacing: 0.5px; }
         .agenda-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-        .agenda-client { font-size: 13px; font-weight: 800; color: #111827; }
-        .agenda-desc { font-size: 11px; color: #6b7280; }
+        .agenda-client { font-size: 13px; font-weight: 700; color: #e8e8e8; }
+        .agenda-desc { font-size: 11px; color: #606060; }
 
-        .timeline-item { padding: 10px 0 10px 20px; border-left: 2px solid #e5e7eb; position: relative; }
-        .timeline-item::before { content: ''; position: absolute; left: -6px; top: 15px; width: 10px; height: 10px; border-radius: 50%; background: #fbbf24; border: 2px solid #fff; }
-        .timeline-date { font-size: 10px; color: #6b7280; font-weight: 700; }
-        .timeline-action { font-size: 12px; font-weight: 800; color: #111827; }
+        .timeline-item { padding: 10px 0 10px 20px; border-left: 1px solid #2a2a2a; position: relative; }
+        .timeline-item::before { content: ''; position: absolute; left: -5px; top: 15px; width: 9px; height: 9px; border-radius: 50%; background: #3a3a3a; border: 1px solid #666; }
+        .timeline-date { font-size: 10px; color: #505050; font-weight: 600; }
+        .timeline-action { font-size: 12px; font-weight: 700; color: #c8c8c8; }
 
         .card-btn-group { display: flex; gap: 3px; }
-        .btn-card-icon { background: transparent; border: 1px solid #e5e7eb; border-radius: 4px; cursor: pointer; padding: 2px 6px; font-size: 10px; color: #6b7280; transition:0.2s; }
-        .btn-card-icon:hover { background: #fbbf24; border-color: #d97706; color: #000; }
+        .btn-card-icon { background: transparent; border: 1px solid #2e2e2e; border-radius: 4px; cursor: pointer; padding: 3px 7px; font-size: 10px; color: #606060; transition:0.2s; }
+        .btn-card-icon:hover { background: #2a2a2a; border-color: #555; color: #e8e8e8; }
 
         .grid-2-col { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
         .gestor-only { display: none !important; }
         .show-gestor { display: inline-flex !important; }
         
-        .card-action { margin-top: 5px; padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background: #f3f4f6; line-height: 1.4; }
-        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fbbf24; padding: 10px 20px; border-radius: 8px; opacity: 0; transition: .3s; z-index: 3000; font-weight: 700; font-size: 12px; }
+        .card-action { margin-top: 0; padding: 5px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; line-height: 1.4; display: flex; align-items: flex-start; gap: 5px; }
+        .card-action-icon { flex-shrink: 0; font-size: 11px; }
+
+        /* ── Card v2.0 TMC ── */
+        .card { background: var(--card-bg); padding: 0; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); cursor: grab; transition: transform .15s, box-shadow .15s; border: 1px solid #2a2a2e; border-left: 3px solid #3a3a3e; overflow: visible; position: relative; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.65); background: #242428; }
+        .card:active { cursor: grabbing; }
+        .card.dragging { opacity: 0.5; transform: rotate(2deg); }
+        .card.stagnant { border-left-color: #7f1d1d !important; }
+        .card.stagnant::after { content: '🕸️'; position: absolute; top: 8px; right: 8px; font-size: 12px; opacity: 0.4; pointer-events: none; }
+        .card.heat-hot  { border-left-color: #16a34a; }
+        .card.heat-warm { border-left-color: #d97706; }
+        .card.heat-cold { border-left-color: #dc2626; }
+        .card.heat-hot  { box-shadow: 0 4px 20px rgba(0,0,0,0.5), -2px 0 12px rgba(22,163,74,0.15); }
+
+        .card-inner { padding: 14px 15px; display: flex; flex-direction: column; gap: 10px; background: var(--card-bg); border-radius: 9px 9px 0 0; line-height: 1.4; }
+        .card:hover .card-inner { background: #242428; }
+
+        /* linha 1: status + tempo */
+        .card-row-top { display: flex; justify-content: space-between; align-items: center; }
+        .card-heat-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; padding: 3px 8px; border-radius: 20px; }
+        .card-heat-badge.hot  { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+        .card-heat-badge.warm { background: #1c1200; color: #fbbf24; border: 1px solid #78350f; }
+        .card-heat-badge.cold { background: #2a0a0a; color: #f87171; border: 1px solid #7f1d1d; }
+        .card-days-badge { font-size: 10px; font-weight: 700; color: #4a4a5a; display: flex; align-items: center; gap: 3px; }
+        .card-days-badge.urgent { color: #f87171; }
+        .card-days-badge.warn   { color: #fbbf24; }
+
+        /* linha 2: produto + cliente + valor */
+        .card-row-main { display: flex; flex-direction: column; gap: 3px; }
+        .card-product-name { font-size: 15px; font-weight: 700; color: #ffffff; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-client-name  { font-size: 12px; font-weight: 500; color: #6a6a7a; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-value        { font-size: 19px; font-weight: 900; color: #ffffff; letter-spacing: -0.5px; line-height: 1.1; margin-top: 2px; }
+
+        /* linha 3: contexto */
+        .card-row-context { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .card-tag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; line-height: 1.4; }
+
+        /* linha 4: próxima ação */
+        .card-row-action { border-radius: 6px; padding: 7px 10px; font-size: 11px; font-weight: 700; display: flex; align-items: flex-start; gap: 6px; line-height: 1.4; }
+        .card-row-action.delayed { background: #1f0a0a; color: #f87171; }
+        .card-row-action.today   { background: #1a1100; color: #fbbf24; }
+        .card-row-action.future  { background: #0a1222; color: #60a5fa; }
+        .card-row-action.neutral { background: #181820; color: #4a4a5a; }
+
+        /* rodapé */
+        .card-footer { display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; border-top: 1px solid #22222a; background: #161619; border-radius: 0 0 9px 9px; }
+        .card-owner { font-size: 11px; font-weight: 700; color: #5a5a6a; display: flex; align-items: center; gap: 6px; }
+        .card-owner-avatar { width: 22px; height: 22px; border-radius: 50%; background: #252530; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: #8a8a9a; border: 1px solid #303040; flex-shrink: 0; }
+        .card-footer-btns { display: flex; gap: 4px; }
+        #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e1e1e; color: #c8c8c8; padding: 10px 22px; border-radius: 8px; opacity: 0; transition: .3s; z-index: 3000; font-weight: 600; font-size: 12px; border: 1px solid #333; box-shadow: 0 4px 20px rgba(0,0,0,0.5); letter-spacing: 0.5px; }
 
         /* ── Dropdown Ações Funil ── */
         .dropdown-actions { position: relative; display: inline-block; }
-        .dropdown-actions-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: #1f2937; border-radius: 8px; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 999; overflow: hidden; }
+        .dropdown-actions-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: #1a1a1a; border: 1px solid #2e2e2e; border-radius: 8px; min-width: 200px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); z-index: 999; overflow: hidden; }
         .dropdown-actions-menu.open { display: block; animation: fadeIn 0.15s; }
-        .dropdown-actions-menu button { width: 100%; padding: 12px 16px; background: none; border: none; color: #e2e8f0; text-align: left; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #374151; transition: 0.15s; text-transform: uppercase; }
+        .dropdown-actions-menu button { width: 100%; padding: 11px 16px; background: none; border: none; color: #a0a0a0; text-align: left; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #222; transition: 0.15s; text-transform: uppercase; letter-spacing: 0.5px; }
         .dropdown-actions-menu button:last-child { border-bottom: none; }
-        .dropdown-actions-menu button:hover { background: #374151; color: #fbbf24; }
-        .btn-actions-toggle { background: #1f2937; color: #fbbf24; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 800; font-size: 11px; cursor: pointer; display: none; align-items: center; gap: 6px; text-transform: uppercase; transition: 0.2s; }
-        .btn-actions-toggle:hover { background: #374151; }
+        .dropdown-actions-menu button:hover { background: #222; color: #e8e8e8; }
+        .btn-actions-toggle { background: #1e1e1e; color: #a0a0a0; border: 1px solid #333; padding: 8px 14px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; display: none; align-items: center; gap: 6px; text-transform: uppercase; transition: 0.2s; }
+        .btn-actions-toggle:hover { background: #2a2a2a; color: #e8e8e8; }
 
         /* ── Bulk Delete ── */
         .card-checkbox-wrap { position: absolute; top: 8px; left: 8px; z-index: 10; display: none; }
-        .card-checkbox-wrap input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #ef4444; }
+        .card-checkbox-wrap input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #c05050; }
         .bulk-mode .card-checkbox-wrap { display: block; }
         .bulk-mode .card { position: relative; padding-left: 34px; }
-        .card.bulk-selected { border-color: #ef4444 !important; background: #fff5f5 !important; outline: 2px solid #ef4444; }
+        .card.bulk-selected { border-color: #8a3030 !important; background: #1e1515 !important; outline: 1px solid #8a3030; }
         #bulk-bar { display: none; position: sticky; bottom: 16px; left: 0; right: 0; z-index: 500; margin: 10px 20px 0; }
         #bulk-bar.active { display: flex; }
-        #bulk-bar-inner { background: #1f2937; color: #fff; padding: 12px 20px; border-radius: 10px; display: flex; align-items: center; gap: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); flex: 1; flex-wrap: wrap; }
-        #bulk-bar-inner span { font-size: 13px; font-weight: 800; flex: 1; }
-        .btn-bulk-cancel { background: #374151; color: #9ca3af; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-transform: uppercase; }
-        .btn-bulk-cancel:hover { background: #4b5563; }
-        .btn-bulk-delete { background: #ef4444; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 800; font-size: 12px; cursor: pointer; text-transform: uppercase; }
-        .btn-bulk-delete:hover { background: #dc2626; }
-        .btn-bulk-select-all { background: #fbbf24; color: #000; border: none; padding: 8px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-transform: uppercase; }
-        .btn-bulk-select-all:hover { background: #f59e0b; }
+        #bulk-bar-inner { background: #1a1a1a; border: 1px solid #333; color: #c8c8c8; padding: 12px 20px; border-radius: 10px; display: flex; align-items: center; gap: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); flex: 1; flex-wrap: wrap; }
+        #bulk-bar-inner span { font-size: 13px; font-weight: 700; flex: 1; }
+        .btn-bulk-cancel { background: #222; color: #606060; border: 1px solid #333; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .btn-bulk-cancel:hover { background: #2a2a2a; color: #a0a0a0; }
+        .btn-bulk-delete { background: #2a1515; color: #c05050; border: 1px solid #5a2020; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .btn-bulk-delete:hover { background: #3a1515; }
+        .btn-bulk-select-all { background: #2a2a2a; color: #e8e8e8; border: 1px solid #444; padding: 8px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .btn-bulk-select-all:hover { background: #3a3a3a; }
 
         @media (max-width: 900px) { .grid-2-col { grid-template-columns: 1fr; } }
         @media (max-width: 768px) {
-            #sidebar { position: fixed; top: 0; left: 0; bottom: 0; transform: translateX(-100%); width: 260px; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
+            #sidebar { position: fixed; top: 0; left: 0; bottom: 0; transform: translateX(-100%); width: 260px; box-shadow: 4px 0 20px rgba(0,0,0,0.8); }
             #sidebar.open { transform: translateX(0); }
             .btn-close-sidebar, .btn-hamburger { display: block; }
             .kanban-board { height: auto; min-height: 500px; }
@@ -218,23 +531,65 @@
 <body>
 
     <div id="user-overlay">
-        <div class="login-box">
-            <h2>TRAIL SYSTEM</h2>
-            <form onsubmit="APP.login(event)">
-                <input type="email" id="login-email" placeholder="E-mail de Acesso" required>
-                <input type="password" id="login-password" placeholder="Senha" required>
-                <button type="submit" id="login-btn">Entrar no Sistema</button>
-                <div id="login-error" style="color:#ef4444;font-size:12px;margin-top:10px;text-align:center;display:none;font-weight:bold;">Credenciais inválidas.</div>
-            </form>
-            <div class="link-register">Novo por aqui? <a onclick="APP.showRegister()">Cadastrar nova empresa</a></div>
+        <!-- LEFT HERO -->
+        <div class="login-hero">
+            <div class="login-hero-top">
+                <div class="login-hero-logo">TMC</div>
+                <div class="login-hero-tagline">Intelligence in Motion</div>
+                <div class="login-hero-accent"></div>
+            </div>
+            <div class="login-hero-middle">
+                <div class="login-hero-headline">Venda mais.<br><span>Perca menos.</span></div>
+                <div class="login-hero-sub">CRM com inteligência artificial integrada. Funil de vendas, estoque e automação WhatsApp em um só lugar.</div>
+            </div>
+            <div class="login-hero-bottom">
+                <div class="login-hero-signature">Think. Move. Convert.</div>
+            </div>
+        </div>
+        <!-- RIGHT FORM -->
+        <div class="login-form-panel">
+            <div class="login-form-label">Acesso à Plataforma</div>
+            <div class="login-form-title">Entrar</div>
+            <div class="login-box">
+                <form onsubmit="APP.login(event)">
+                    <input type="email" id="login-email" placeholder="E-mail de acesso" required>
+                    <input type="password" id="login-password" placeholder="Senha" required>
+                    <button type="submit" id="login-btn">Entrar no Sistema</button>
+                    <div id="login-error" style="color:#c05050;font-size:11px;margin-top:12px;text-align:center;display:none;font-weight:600;letter-spacing:1px;">Credenciais inválidas.</div>
+                </form>
+                <div class="link-register">Novo por aqui? <a onclick="APP.showRegister()">Cadastrar nova empresa</a></div>
+            </div>
         </div>
     </div>
 
     <!-- TELA DE CADASTRO DE NOVA EMPRESA -->
     <div id="register-overlay">
+        <!-- LEFT HERO -->
+        <div class="register-hero">
+            <div>
+                <div class="register-hero-logo">TMC</div>
+                <div class="register-hero-sub">Intelligence in Motion</div>
+            </div>
+            <div class="register-hero-desc">Seu sistema de vendas com IA estará pronto em menos de 2 minutos.</div>
+            <div class="register-hero-steps">
+                <div class="register-hero-step">
+                    <div class="register-hero-step-num">01</div>
+                    <div class="register-hero-step-text" style="color:#2e2e2e;">Crie sua empresa</div>
+                </div>
+                <div class="register-hero-step">
+                    <div class="register-hero-step-num">02</div>
+                    <div class="register-hero-step-text" style="color:#2e2e2e;">Configure sua equipe</div>
+                </div>
+                <div class="register-hero-step">
+                    <div class="register-hero-step-num">03</div>
+                    <div class="register-hero-step-text" style="color:#2e2e2e;">Comece a vender</div>
+                </div>
+            </div>
+        </div>
+        <!-- RIGHT FORM -->
         <div class="register-box">
-            <h2>🌱 Nova Empresa</h2>
-            <p class="subtitle">Crie sua conta e comece a usar o Trail System agora</p>
+            <h2>Nova Empresa</h2>
+            <p class="subtitle">Criar conta</p>
             <label class="field-label">Nome da Empresa</label>
             <input type="text" id="reg-company" placeholder="Ex: Agro Minas Distribuidora" required>
             <hr>
@@ -253,7 +608,8 @@
 
     <aside id="sidebar">
         <div class="brand">
-            <h1>TRAIL SYSTEM</h1>
+            <h1>TMC</h1>
+            <p style="color:#444;font-size:8px;letter-spacing:3px;text-transform:uppercase;margin-top:4px;">Intelligence in Motion</p>
             <button class="btn-close-sidebar" onclick="APP.toggleMenu()">×</button>
         </div>
         <nav class="nav-menu">
@@ -269,10 +625,10 @@
             <button onclick="APP.nav('equipe')" id="btn-equipe" class="nav-item gestor-ctrl">👥 Equipe</button>
         </nav>
         <div class="sidebar-footer">
-            <div id="user-info" style="color:#fbbf24;font-weight:800;margin-bottom:5px"></div>
-            <button onclick="APP.logout()" style="background:0 0;border:1px solid #374151;color:#9ca3af;padding:4px;width:100%;cursor:pointer;font-weight:bold;">SAIR DO SISTEMA</button>
-            <button id="btn-migrate-cities" onclick="APP.migrateCities()" style="display:none;margin-top:8px;background:#7c3aed;border:none;color:#fff;padding:6px;width:100%;cursor:pointer;font-weight:bold;border-radius:4px;font-size:10px;">🗺️ MIGRAR CIDADES (1x)</button>
-            <div style="margin-top:15px; font-size:9px; opacity:0.5; color: #fbbf24;">v4.5.4 (Seguro)</div>
+            <div id="user-info" style="color:#c8c8c8;font-weight:700;margin-bottom:8px;font-size:12px;letter-spacing:0.5px;"></div>
+            <button onclick="APP.logout()" style="background:#111;border:1px solid #2a2a2a;color:#606060;padding:7px;width:100%;cursor:pointer;font-weight:700;border-radius:4px;font-size:10px;letter-spacing:1px;text-transform:uppercase;transition:0.2s;" onmouseover="this.style.color='#c8c8c8';this.style.borderColor='#444'" onmouseout="this.style.color='#606060';this.style.borderColor='#2a2a2a'">Sair do Sistema</button>
+            <button id="btn-migrate-cities" onclick="APP.migrateCities()" style="display:none;margin-top:6px;background:#1e1e2e;border:1px solid #3a3a5a;color:#8080c0;padding:6px;width:100%;cursor:pointer;font-weight:700;border-radius:4px;font-size:10px;letter-spacing:1px;">🗺️ MIGRAR CIDADES (1x)</button>
+            <div style="margin-top:12px; font-size:9px; color:#2e2e2e; letter-spacing:2px; text-transform:uppercase;">v4.5.4</div>
         </div>
     </aside>
 
@@ -287,8 +643,8 @@
                     oninput="APP.globalSearch(this.value)"
                     onfocus="document.getElementById('global-results').style.display='block'"
                     onblur="setTimeout(()=>document.getElementById('global-results').style.display='none',200)"
-                    style="width:100%; padding:8px 12px; border:1px solid #e5e7eb; border-radius:6px; font-size:12px; outline:none; background:#f9fafb;">
-                <div id="global-results" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.12); z-index:999; max-height:360px; overflow-y:auto;"></div>
+                    style="width:100%; padding:8px 14px; border:1px solid #2a2a2a; border-radius:6px; font-size:12px; outline:none; background:#111; color:#e8e8e8; letter-spacing:0.3px; transition:0.2s;" onfocus="this.style.borderColor='#555'" onblur="this.style.borderColor='#2a2a2a'">
+                <div id="global-results" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#1a1a1a; border:1px solid #2e2e2e; border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,0.7); z-index:999; max-height:360px; overflow-y:auto;"></div>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <button onclick="APP.toggleDarkMode()" id="btn-dark-mode" title="Alternar Dark Mode" style="background:none; border:1px solid var(--border); border-radius:6px; padding:6px 10px; cursor:pointer; font-size:14px; color:var(--text);">🌙</button>
@@ -337,7 +693,7 @@
                         <span>📈 Evolução de Vendas (6 Meses)</span>
                         <div id="chart-filter-wrap" style="display:none; align-items:center; gap:6px;">
                             <span style="font-size:10px; color:#9ca3af; font-weight:600;">VENDEDOR:</span>
-                            <select id="chart-seller-filter" onchange="APP.renderCharts()" style="padding:4px 8px; border-radius:4px; border:1px solid #374151; background:#374151; color:#fbbf24; font-size:11px; font-weight:700; cursor:pointer;">
+                            <select id="chart-seller-filter" onchange="APP.renderCharts()" style="padding:4px 8px; border-radius:4px; border:1px solid #2e2e2e; background:#1a1a1a; color:#c8c8c8; font-size:11px; font-weight:700; cursor:pointer;">
                                 <option value="all">Toda a Equipe</option>
                             </select>
                         </div>
@@ -347,9 +703,9 @@
                         <div style="flex:1; min-width:200px;"><div class="chart-container" style="height:280px;"><canvas id="chart-mix"></canvas></div></div>
                     </div>
                     <div style="display:flex; gap:16px; padding:4px 12px 10px; flex-wrap:wrap;">
-                        <div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#374151;"><div style="width:12px; height:3px; background:#fbbf24; border-radius:2px;"></div>Tratores</div>
-                        <div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#374151;"><div style="width:12px; height:3px; background:#3b82f6; border-radius:2px;"></div>Implementos</div>
-                        <div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#374151;"><div style="width:12px; height:3px; background:#10b981; border-radius:2px;"></div>Consórcio</div>
+                        <div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#808080;"><div style="width:12px; height:3px; background:#c8c8c8; border-radius:2px;"></div>Tratores</div>
+                        <div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#808080;"><div style="width:12px; height:3px; background:#4a90d9; border-radius:2px;"></div>Implementos</div>
+                        <div style="display:flex; align-items:center; gap:5px; font-size:11px; color:#808080;"><div style="width:12px; height:3px; background:#5aaa80; border-radius:2px;"></div>Consórcio</div>
                     </div>
                 </div>
 
@@ -374,9 +730,9 @@
                         <div class="data-card-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                             <span>🏆 Top Vendedores</span>
                             <div style="display:flex; align-items:center; gap:6px;">
-                                <button onclick="APP.rankingNav(-1)" style="background:rgba(255,255,255,0.1); border:none; color:#fbbf24; font-size:14px; cursor:pointer; border-radius:4px; padding:2px 8px; line-height:1;">‹</button>
-                                <span id="ranking-period-label" style="font-size:10px; font-weight:700; color:#fbbf24; min-width:80px; text-align:center;"></span>
-                                <button onclick="APP.rankingNav(1)" style="background:rgba(255,255,255,0.1); border:none; color:#fbbf24; font-size:14px; cursor:pointer; border-radius:4px; padding:2px 8px; line-height:1;">›</button>
+                                <button onclick="APP.rankingNav(-1)" style="background:rgba(255,255,255,0.1); border:none; color:#c8c8c8; font-size:14px; cursor:pointer; border-radius:4px; padding:2px 8px; line-height:1;">‹</button>
+                                <span id="ranking-period-label" style="font-size:10px; font-weight:700; color:#c8c8c8; min-width:80px; text-align:center;"></span>
+                                <button onclick="APP.rankingNav(1)" style="background:rgba(255,255,255,0.1); border:none; color:#c8c8c8; font-size:14px; cursor:pointer; border-radius:4px; padding:2px 8px; line-height:1;">›</button>
                             </div>
                         </div>
                         <div id="ranking-list" style="padding: 10px;"></div>
@@ -452,11 +808,11 @@
 
             <section id="tab-funil" class="tab-content">
                 <!-- ── FUNIL HEADER ── -->
-                <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px 18px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,.05);">
+                <div style="background:#1a1a1a; border:1px solid #2e2e2e; border-radius:12px; padding:14px 18px; margin-bottom:14px; box-shadow:0 4px 16px rgba(0,0,0,0.4);">
                     <!-- Linha 1: título + botão principal + engrenagem -->
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
                         <div style="display:flex; align-items:center; gap:10px;">
-                            <div style="background:#fbbf24; border-radius:8px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">⚡</div>
+                            <div style="background:#2a2a2a; border:1px solid #3a3a3a; border-radius:8px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">⚡</div>
                             <div>
                                 <div style="font-weight:900; font-size:15px; color:#111827; line-height:1.1;">MEU FUNIL</div>
                                 <div style="font-size:10px; color:#9ca3af; font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:1px;">Oportunidades de Venda</div>
@@ -475,8 +831,8 @@
                     </div>
                     <!-- Linha 2: filtros + tipo -->
                     <div style="display:flex; gap:8px; align-items:center; margin-top:12px; padding-top:12px; border-top:1px solid #f3f4f6; flex-wrap:wrap;">
-                        <input id="funil-search" type="text" placeholder="🔍 Filtrar por cliente..." oninput="APP.renderKanban()" style="padding:7px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; min-width:170px; flex:1; background:#f9fafb;">
-                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:7px 10px; border-radius:8px; border:1px solid #e5e7eb; font-size:12px; background:#f9fafb;"></select>
+                        <input id="funil-search" type="text" placeholder="🔍 Filtrar por cliente..." oninput="APP.renderKanban()" style="padding:7px 12px; border:1px solid #2a2a2a; border-radius:8px; font-size:12px; min-width:170px; flex:1; background:#111; color:#e8e8e8;">
+                        <select id="filter-user" onchange="APP.renderKanban()" style="display:none; padding:7px 10px; border-radius:8px; border:1px solid #2a2a2a; font-size:12px; background:#111; color:#e8e8e8;"></select>
                         <div style="display:flex; gap:4px; flex-wrap:wrap;">
                             <button class="funil-type-btn active" onclick="APP.setFunilType('todos')"       id="ftype-todos">Todos</button>
                             <button class="funil-type-btn"        onclick="APP.setFunilType('maquina')"    id="ftype-maquina">🚜 Máquinas</button>
@@ -570,7 +926,7 @@
             </section>
 
             <section id="tab-equipe" class="tab-content">
-                <div style="background:#fff3cd; color:#856404; padding:15px; border-radius:6px; margin-bottom:15px; font-size:12px;">
+                <div style="background:#1e1a0e; color:#a09060; border:1px solid #3a3010; padding:15px; border-radius:6px; margin-bottom:15px; font-size:12px;">
                     <strong>Atenção Gestor:</strong> Crie a conta do vendedor no painel Auth do Supabase e depois cole o UID gerado abaixo para configurar o perfil dele aqui.
                 </div>
                 <button onclick="APP.prepareUser()" class="btn btn-main admin-only" style="margin-bottom:15px;">+ Novo Perfil da Equipe</button>
@@ -597,7 +953,7 @@
                 <div class="form-item"><label>Valor (R$)</label><input id="deal-value" required oninput="APP.maskMoney(this)"></div>
                 <div class="form-item"><label>Tipo</label><select id="deal-type" onchange="APP.toggleStock()"><option value="maquina">🚜 Máquina (Trator)</option><option value="implemento">🔧 Implemento</option><option value="outros">📦 Outros</option><option value="consorcio">📄 Consórcio</option></select></div>
                 <div class="form-item" id="div-stock-select"><label>Vincular Máquina</label><select id="deal-stock"></select></div>
-                <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
+                <hr style="border:0; border-top:1px solid #2a2a2a; margin:15px 0;">
                 <div class="form-item" id="div-deal-close-date" style="display:none;">
                     <label style="color:#b45309;">📅 Data de Fechamento da Venda</label>
                     <input type="date" id="deal-close-date">
@@ -606,7 +962,7 @@
                 <h4 style="margin-bottom:10px; font-size:12px; color:#4b5563;">Agendar Próxima Ação</h4>
                 <div class="form-item"><label>Data Limite</label><input type="date" id="deal-next-date"></div>
                 <div class="form-item"><label>Descrição (O que fazer?)</label><input type="text" id="deal-next-desc" placeholder="Ex: Ligar para confirmar, Visita técnica..."></div>
-                <hr style="border:0; border-top:1px solid #e5e7eb; margin:15px 0;">
+                <hr style="border:0; border-top:1px solid #2a2a2a; margin:15px 0;">
                 <div class="form-item">
                     <label>📝 Observações Internas</label>
                     <textarea id="deal-obs" rows="3" placeholder="Anotações livres: condições especiais, detalhes da conversa, perfil do cliente..." style="resize:vertical; width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; font-family:inherit;"></textarea>
@@ -651,7 +1007,7 @@
                 <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
                     <label style="display:flex; flex-direction:column; flex:1; min-width:200px; font-size:10px; font-weight:800; text-transform:uppercase; color:#4b5563; gap:4px;">
                         Selecionar arquivo de Backup (.xlsx)
-                        <input type="file" id="funil-import-file" accept=".xlsx,.xls" onchange="APP.handleFunilImportFile(event)" style="padding:8px; border:1px solid #d1d5db; border-radius:6px; background:#fff; font-size:12px;">
+                        <input type="file" id="funil-import-file" accept=".xlsx,.xls" onchange="APP.handleFunilImportFile(event)" style="padding:8px; border:1px solid #2a2a2a; border-radius:6px; background:#111; color:#e8e8e8; font-size:12px;">
                     </label>
                 </div>
                 <button type="button" onclick="APP.closeModals()" class="btn" style="width:100%; margin-top:15px;">Cancelar</button>
@@ -659,11 +1015,11 @@
 
             <!-- Passo 2: preview -->
             <div id="funil-import-step-2" style="display:none;">
-                <div id="funil-import-summary" style="margin:12px 0; font-size:12px; font-weight:700; color:#1f2937; display:flex; gap:10px; flex-wrap:wrap;"></div>
-                <div style="max-height:300px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:8px;">
+                <div id="funil-import-summary" style="margin:12px 0; font-size:12px; font-weight:700; color:#c8c8c8; display:flex; gap:10px; flex-wrap:wrap;"></div>
+                <div style="max-height:300px; overflow-y:auto; border:1px solid #2a2a2a; border-radius:8px;">
                     <table style="width:100%; border-collapse:collapse; font-size:11px;">
                         <thead>
-                            <tr style="background:#1f2937; color:#fbbf24; position:sticky; top:0; z-index:1;">
+                            <tr style="background:#181818; color:#c8c8c8; position:sticky; top:0; z-index:1; border-bottom:1px solid #333;">
                                 <th style="padding:8px 10px; text-align:left;">#</th>
                                 <th style="padding:8px 10px; text-align:left;">Cliente</th>
                                 <th style="padding:8px 10px; text-align:left;">Etapa</th>
@@ -676,7 +1032,7 @@
                         <tbody id="funil-import-preview-body"></tbody>
                     </table>
                 </div>
-                <div id="funil-import-errors" style="display:none; margin-top:10px; background:#fff5f5; border:1px solid #fecaca; border-radius:6px; padding:10px; font-size:11px; color:#991b1b;"></div>
+                <div id="funil-import-errors" style="display:none; margin-top:10px; background:#1e1010; border:1px solid #5a2020; border-radius:6px; padding:10px; font-size:11px; color:#c05050;"></div>
                 <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
                     <button type="button" onclick="APP.confirmImportFunil()" id="btn-confirm-funil-import" class="btn btn-main" style="flex:1;">✅ Confirmar Importação</button>
                     <button type="button" onclick="APP.resetFunilImportModal()" class="btn" style="flex:1;">↩️ Outro arquivo</button>
@@ -704,7 +1060,7 @@
                 <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
                     <label style="display:flex; flex-direction:column; flex:1; min-width:200px; font-size:10px; font-weight:800; text-transform:uppercase; color:#4b5563; gap:4px;">
                         Selecionar arquivo (.xlsx, .xls, .csv)
-                        <input type="file" id="import-stock-file" accept=".xlsx,.xls,.csv" onchange="APP.handleImportFile(event)" style="padding:8px; border:1px solid #d1d5db; border-radius:6px; background:#fff; font-size:12px;">
+                        <input type="file" id="import-stock-file" accept=".xlsx,.xls,.csv" onchange="APP.handleImportFile(event)" style="padding:8px; border:1px solid #2a2a2a; border-radius:6px; background:#111; color:#e8e8e8; font-size:12px;">
                     </label>
                     <button type="button" onclick="APP.downloadImportTemplate()" class="btn btn-dark" style="white-space:nowrap;">⬇️ Baixar Modelo .xlsx</button>
                 </div>
@@ -713,11 +1069,11 @@
 
             <!-- Passo 2: preview -->
             <div id="import-step-2" style="display:none;">
-                <div id="import-summary" style="margin:12px 0; font-size:12px; font-weight:700; color:#1f2937;"></div>
-                <div style="max-height:280px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:8px;">
+                <div id="import-summary" style="margin:12px 0; font-size:12px; font-weight:700; color:#c8c8c8;"></div>
+                <div style="max-height:280px; overflow-y:auto; border:1px solid #2a2a2a; border-radius:8px;">
                     <table style="width:100%; border-collapse:collapse; font-size:12px;">
                         <thead>
-                            <tr style="background:#1f2937; color:#fbbf24; position:sticky; top:0; z-index:1;">
+                            <tr style="background:#181818; color:#c8c8c8; position:sticky; top:0; z-index:1; border-bottom:1px solid #333;">
                                 <th style="padding:8px 10px; text-align:left;">#</th>
                                 <th style="padding:8px 10px; text-align:left;">Tipo</th>
                                 <th style="padding:8px 10px; text-align:left;">Modelo</th>
@@ -729,7 +1085,7 @@
                         <tbody id="import-preview-body"></tbody>
                     </table>
                 </div>
-                <div id="import-errors" style="display:none; margin-top:10px; background:#fff5f5; border:1px solid #fecaca; border-radius:6px; padding:10px; font-size:11px; color:#991b1b;"></div>
+                <div id="import-errors" style="display:none; margin-top:10px; background:#1e1010; border:1px solid #5a2020; border-radius:6px; padding:10px; font-size:11px; color:#c05050;"></div>
                 <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
                     <button type="button" onclick="APP.confirmImportStock()" id="btn-confirm-import" class="btn btn-main" style="flex:1;">✅ Confirmar Importação</button>
                     <button type="button" onclick="APP.resetImportModal()" class="btn" style="flex:1;">↩️ Outro arquivo</button>
@@ -1422,7 +1778,7 @@
                     {id:'contrato',      l:'Contrato',         c:'#f97316'},
                     {id:'af',            l:'A.F. Final',       c:'#8b5cf6'},
                     {id:'ganho',         l:'Ganho',            c:'#10b981'},
-                    {id:'perdido',       l:'Perdido',          c:'#374151'}
+                    {id:'perdido',       l:'Perdido',          c:'#2a2a2a'}
                 ];
                 const board = document.getElementById('kanban-board');
                 if(!board) return; board.innerHTML = '';
@@ -1462,20 +1818,27 @@
                         return APP.daysDiff(lastDate) > 25;
                     }).length;
                     summaryEl.innerHTML = `
-                        <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; flex:1; min-width:130px;">
-                            <div style="font-size:10px; font-weight:800; color:#6b7280; text-transform:uppercase;">⚡ Negócios Ativos</div>
-                            <div style="font-size:20px; font-weight:900; color:#111827;">${ativos.length}</div>
+                        <div style="background:#151516; border:1px solid #252525; border-radius:8px; padding:12px 18px; flex:1; min-width:130px; position:relative; overflow:hidden;">
+                            <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#444,transparent);"></div>
+                            <div style="font-size:9px; font-weight:800; color:#555; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">⚡ Negócios Ativos</div>
+                            <div style="font-size:26px; font-weight:900; color:#e8e8e8; line-height:1;">${ativos.length}</div>
+                            <div style="font-size:9px; color:#404040; margin-top:3px;">Total de oportunidades</div>
                         </div>
-                        <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; flex:1; min-width:130px;">
-                            <div style="font-size:10px; font-weight:800; color:#6b7280; text-transform:uppercase;">💰 Em Carteira</div>
-                            <div style="font-size:20px; font-weight:900; color:#8b5cf6;">${fmt(carteira)}</div>
+                        <div style="background:#151516; border:1px solid #252525; border-radius:8px; padding:12px 18px; flex:1; min-width:130px; position:relative; overflow:hidden;">
+                            <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#7c3aed,transparent);opacity:0.6;"></div>
+                            <div style="font-size:9px; font-weight:800; color:#555; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">💰 Em Carteira</div>
+                            <div style="font-size:22px; font-weight:900; color:#a78bfa; line-height:1;">${fmt(carteira)}</div>
+                            <div style="font-size:9px; color:#404040; margin-top:3px;">Valor total</div>
                         </div>
-                        ${parados > 0 ? `<div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 16px; flex:1; min-width:130px;">
-                            <div style="font-size:10px; font-weight:800; color:#92400e; text-transform:uppercase;">🕸️ Parados +25d</div>
-                            <div style="font-size:20px; font-weight:900; color:#78350f;">${parados}</div>
-                        </div>` : `<div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 16px; flex:1; min-width:130px;">
-                            <div style="font-size:10px; font-weight:800; color:#065f46; text-transform:uppercase;">✅ Todos em Dia</div>
-                            <div style="font-size:20px; font-weight:900; color:#065f46;">—</div>
+                        ${parados > 0 ? `<div style="background:#1a1208; border:1px solid #3d2c00; border-radius:8px; padding:12px 18px; flex:1; min-width:130px; position:relative; overflow:hidden;">
+                            <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#d97706,transparent);opacity:0.5;"></div>
+                            <div style="font-size:9px; font-weight:800; color:#92400e; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">🕸️ Parados +25d</div>
+                            <div style="font-size:26px; font-weight:900; color:#fbbf24; line-height:1;">${parados}</div>
+                            <div style="font-size:9px; color:#78350f; margin-top:3px;">Negócios</div>
+                        </div>` : `<div style="background:#0a1a0f; border:1px solid #14532d; border-radius:8px; padding:12px 18px; flex:1; min-width:130px; position:relative; overflow:hidden;">
+                            <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#16a34a,transparent);opacity:0.5;"></div>
+                            <div style="font-size:9px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">✅ Todos em Dia</div>
+                            <div style="font-size:26px; font-weight:900; color:#4ade80; line-height:1;">—</div>
                         </div>`}
                     `;
                 }
@@ -1499,82 +1862,99 @@
                     const list = div.querySelector('.kanban-list');
 
                     items.forEach(d => {
-                        // Stagnant
+                        // ── Calcula dias sem movimentação ──
                         let lastActionDate = new Date(d.created_at||Date.now()).getTime();
                         if(d.history && d.history.length > 0) {
-                            const moves = d.history.filter(h => h.action === 'Movimentação' || h.action === 'Criação');
+                            const moves = d.history.filter(h => h.action === 'Movimentação' || h.action === 'Criação' || h.action === 'Observação' || h.action === 'Agenda');
                             if(moves.length > 0) lastActionDate = new Date(moves[moves.length-1].date).getTime();
                         }
-                        const isStagnant = APP.daysDiff(lastActionDate) > 25 && !['ganho','perdido'].includes(d.stage);
+                        const diasParado = APP.daysDiff(lastActionDate);
+                        const isStagnant = diasParado > 25 && !['ganho','perdido'].includes(d.stage);
 
-                        // Produto
-                        let productDisplay = '';
+                        // ── Lógica de calor ──
+                        let heat = 'hot', heatLabel = '🟢 Quente', heatClass = 'hot';
+                        if (!['ganho','perdido'].includes(d.stage)) {
+                            if (diasParado >= 5) { heat = 'cold'; heatLabel = '🔴 Travado'; heatClass = 'cold'; }
+                            else if (diasParado >= 2) { heat = 'warm'; heatLabel = '🟡 Atenção'; heatClass = 'warm'; }
+                        }
+
+                        // ── Badge de dias ──
+                        let daysBadgeClass = diasParado >= 5 ? 'urgent' : diasParado >= 2 ? 'warn' : '';
+                        let daysLabel = diasParado === 0 ? 'hoje' : diasParado === 1 ? '1d' : `${diasParado}d`;
+
+                        // ── Produto ──
+                        let productName = '', productTag = '', clientLabel = d.client || '';
                         if(d.stock_id) {
                             const s = APP.data.stock.find(x => x.id == d.stock_id);
-                            const typeIcon  = d.deal_type === 'implemento' ? '🔧' : d.deal_type === 'outros' ? '📦' : '🚜';
-                            const typeBg    = d.deal_type === 'implemento' ? '#eff6ff' : d.deal_type === 'outros' ? '#f5f3ff' : '#f3f4f6';
-                            const typeBorder= d.deal_type === 'implemento' ? '#bfdbfe' : d.deal_type === 'outros' ? '#ddd6fe' : '#e5e7eb';
-                            const typeColor = d.deal_type === 'implemento' ? '#1d4ed8' : d.deal_type === 'outros' ? '#6d28d9' : '#1f2937';
-                            productDisplay = s
-                                ? `<div style="font-size:10px; font-weight:700; color:${typeColor}; background:${typeBg}; padding:1px 5px; border-radius:3px; display:inline-block; border:1px solid ${typeBorder}; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${typeIcon} ${s.model}</div>`
-                                : `<div style="font-size:10px; font-weight:700; color:#6b7280; background:#f3f4f6; padding:1px 5px; border-radius:3px; display:inline-block;">${typeIcon} Sem máquina</div>`;
+                            const typeIcon = d.deal_type === 'implemento' ? '🔧' : d.deal_type === 'outros' ? '📦' : '🚜';
+                            productName = s ? `${typeIcon} ${s.model}` : `${typeIcon} Sem estoque`;
+                            const tagColor = d.deal_type === 'implemento' ? {bg:'#0f2340',c:'#60a5fa',b:'#1e3a5f'} : d.deal_type === 'outros' ? {bg:'#1a1030',c:'#a78bfa',b:'#2e1a4a'} : {bg:'#1a1a1a',c:'#d0d0d0',b:'#333'};
+                            if(s) productTag = `<span class="card-tag" style="background:${tagColor.bg};color:${tagColor.c};border:1px solid ${tagColor.b};">${s.mono || s.type || ''}</span>`;
                         } else if(d.deal_type === 'consorcio') {
-                            productDisplay = `<div style="font-size:10px; font-weight:700; color:#059669; background:#ecfdf5; padding:1px 5px; border-radius:3px; display:inline-block; border:1px solid #a7f3d0;">📄 Consórcio</div>`;
+                            productName = '📄 Consórcio';
+                            productTag = `<span class="card-tag" style="background:#042f1e;color:#34d399;border:1px solid #065f46;">Consórcio</span>`;
                         } else {
                             const typeIcon = d.deal_type === 'implemento' ? '🔧' : d.deal_type === 'outros' ? '📦' : '🚜';
-                            productDisplay = `<div style="font-size:10px; font-weight:700; color:#6b7280; background:#f3f4f6; padding:1px 5px; border-radius:3px; display:inline-block;">${typeIcon} Sem estoque vinculado</div>`;
+                            productName = `${typeIcon} Sem produto`;
                         }
 
-                        // Próxima ação
+                        // ── Fonte do negócio como contexto ──
+                        let sourceTag = '';
+                        if(d.source) sourceTag = `<span class="card-tag" style="background:#1a1a1a;color:#484848;border:1px solid #2a2a2a;">${d.source}</span>`;
+
+                        // ── Próxima ação ──
                         let actionHtml = '';
                         if(d.stage === 'perdido' && d.next_desc && d.next_desc.includes('PERDA')) {
-                            actionHtml = `<div class="card-action" style="color:#991b1b; background:#fee2e2;">${d.next_desc}</div>`;
+                            actionHtml = `<div class="card-row-action neutral">⛔ ${d.next_desc}</div>`;
                         } else if(d.next_date) {
                             const isDelay = d.next_date < today;
-                            const isToday = d.next_date === today;
-                            const color = isDelay ? '#ef4444' : isToday ? '#d97706' : '#2563eb';
-                            const bg = isDelay ? '#fee2e2' : isToday ? '#fef3c7' : '#eff6ff';
-                            actionHtml = `<div class="card-action" style="color:${color}; background:${bg};">📅 ${d.next_date.split('-').reverse().join('/')}${d.next_desc ? ' — ' + d.next_desc : ''}</div>`;
+                            const isToday2 = d.next_date === today;
+                            const cls = isDelay ? 'delayed' : isToday2 ? 'today' : 'future';
+                            const ico = isDelay ? '🔥' : isToday2 ? '⚡' : '📅';
+                            const dateStr = d.next_date.split('-').reverse().join('/');
+                            actionHtml = `<div class="card-row-action ${cls}">${ico} ${d.next_desc ? d.next_desc : dateStr}</div>`;
+                        } else {
+                            // sem ação agendada = alerta sutil
+                            actionHtml = `<div class="card-row-action neutral">— Sem ação agendada</div>`;
                         }
 
-                        // Observações internas — texto colapsável, sem ícone, separado visualmente do histórico
-                        const lastObsCard = d.history ? [...d.history].reverse().find(h => h.action === 'Observação') : null;
-                        let obsHtml = '';
-                        if(lastObsCard && lastObsCard.detail) {
-                            const d_obs = lastObsCard.detail;
-                            const obsId = 'obs-' + d.id;
-                            const isTruncated = d_obs.length > 55;
-                            const preview = isTruncated ? d_obs.slice(0, 55) + '...' : d_obs;
-                            obsHtml = `<div class="card-obs-preview" data-obs-full="${encodeURIComponent(d_obs)}" data-obs-id="${obsId}" data-expanded="false" onclick="event.stopPropagation(); APP.toggleObs(this)">
-                                <span style="color:#9ca3af; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:2px;">📝 nota interna <span class="obs-arrow">▾</span></span>
-                                <span class="obs-text">${preview}</span>
-                            </div>`;
-                        }
+                        // ── Avatar inicial do dono ──
+                        const ownerName = d.owner || '';
+                        const ownerInitials = ownerName.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
 
-                        // Botão excluir
+                        // ── Botões ──
                         const delBtn = APP.user.role === 'gestor' ? `<button onclick="event.stopPropagation(); APP.deleteDeal('${d.id}')" class="btn-card-icon" title="Excluir">🗑️</button>` : '';
-                        const dupBtn = `<button onclick="event.stopPropagation(); APP.duplicateDeal('${d.id}')" class="btn-card-icon" title="Duplicar negócio">📋</button>`;
+                        const dupBtn = `<button onclick="event.stopPropagation(); APP.duplicateDeal('${d.id}')" class="btn-card-icon" title="Duplicar">📋</button>`;
+                        const histBtn = `<button onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" class="btn-card-icon" title="Histórico">📜</button>`;
 
                         const card = document.createElement('div');
-                        card.className = `card ${isStagnant ? 'stagnant' : ''}${APP.selectedDealIds.has(String(d.id)) ? ' bulk-selected' : ''}`;
+                        card.className = `card heat-${heatClass} ${isStagnant ? 'stagnant' : ''}${APP.selectedDealIds.has(String(d.id)) ? ' bulk-selected' : ''}`;
                         card.dataset.dealId = d.id;
                         card.draggable = true;
                         card.innerHTML = `
                             <div class="card-checkbox-wrap"><input type="checkbox" class="bulk-cb" ${APP.selectedDealIds.has(String(d.id)) ? 'checked' : ''} onclick="event.stopPropagation(); APP.toggleDealSelect('${d.id}', this.checked)"></div>
-                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:4px; margin-bottom:4px;">
-                                <div style="font-weight:900; font-size:13px; color:#111827; line-height:1.2; flex:1;">${d.client}</div>
-                                <div class="card-btn-group" style="flex-shrink:0;">
-                                    <button class="btn-card-icon" onclick="event.stopPropagation(); APP.viewHistory('${d.id}', 'deal')" title="Histórico">📜</button>
-                                    ${dupBtn}
-                                    ${delBtn}
+                            <div class="card-inner">
+                                <div class="card-row-top">
+                                    <span class="card-heat-badge ${heatClass}">${heatLabel}</span>
+                                    <span class="card-days-badge ${daysBadgeClass}">⏱ ${daysLabel}</span>
+                                </div>
+                                <div class="card-row-main">
+                                    <div class="card-product-name">${productName}</div>
+                                    <div class="card-client-name">${clientLabel}</div>
+                                    <div class="card-value">${fmt(d.value||0)}</div>
+                                </div>
+                                ${(productTag || sourceTag) ? `<div class="card-row-context">${productTag}${sourceTag}</div>` : ''}
+                                ${actionHtml}
+                            </div>
+                            <div class="card-footer">
+                                <div class="card-owner">
+                                    <div class="card-owner-avatar">${ownerInitials}</div>
+                                    ${ownerName.split(' ')[0]}
+                                </div>
+                                <div class="card-footer-btns">
+                                    ${histBtn}${dupBtn}${delBtn}
                                 </div>
                             </div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:${actionHtml || obsHtml ? '5px' : '0'};">
-                                ${productDisplay}
-                                <div style="font-weight:800; font-size:12px; color:#374151; white-space:nowrap;">${fmt(d.value||0)}</div>
-                            </div>
-                            ${actionHtml}
-                            ${obsHtml}
                         `;
                         card.onclick = () => APP.editDeal(d.id);
                         card.ondragstart = () => { APP.dragId = d.id; card.classList.add('dragging'); };
@@ -2126,7 +2506,7 @@
                         // Renderiza preview
                         const tbody = document.getElementById('import-preview-body');
                         tbody.innerHTML = rows.map((r, i) => `
-                            <tr style="background:${i%2===0?'#fff':'#f9fafb'}; border-bottom:1px solid #f3f4f6;">
+                            <tr style="background:${i%2===0?'#1c1c1c':'#181818'}; border-bottom:1px solid #242424;">
                                 <td style="padding:7px 10px; color:#9ca3af;">${i+1}</td>
                                 <td style="padding:7px 10px;">${r.type}</td>
                                 <td style="padding:7px 10px; font-weight:700;">${r.model}</td>
@@ -2319,7 +2699,7 @@
                         const stageLabels = { prospeccao:'Prospecção', analise_credito:'Análise Crédito', documentacao:'Documentação', contrato:'Contrato', af:'A.F. Final', ganho:'Ganho', perdido:'Perdido' };
                         const tbody = document.getElementById('funil-import-preview-body');
                         tbody.innerHTML = rows.map((r, i) => `
-                            <tr style="background:${i%2===0?'#fff':'#f9fafb'}; border-bottom:1px solid #f3f4f6;">
+                            <tr style="background:${i%2===0?'#1c1c1c':'#181818'}; border-bottom:1px solid #242424;">
                                 <td style="padding:6px 10px; color:#9ca3af;">${i+1}</td>
                                 <td style="padding:6px 10px; font-weight:700;">${r.client}</td>
                                 <td style="padding:6px 10px;">${stageLabels[r.stage]||r.stage}</td>
@@ -2584,7 +2964,7 @@
                             <div class="ranking-val">${fmt(r.total)}</div>
                         </div>
                         <div style="background:#f3f4f6; height:5px; border-radius:3px; overflow:hidden;">
-                            <div style="width:${pct}%; height:100%; background:#fbbf24; border-radius:3px;"></div>
+                            <div style="width:${pct}%; height:100%; background:linear-gradient(90deg,#888,#e8e8e8); border-radius:3px;"></div>
                         </div>
                         ${goalPct !== null ? `<div style="font-size:9px; color:${goalPct>=100?'#10b981':'#6b7280'}; text-align:right;">${goalPct.toFixed(0)}% da meta</div>` : ''}
                     </div>`;
@@ -2656,7 +3036,7 @@
                     const critStock = APP.data.stock.filter(s => s.status !== 'Vendido' && APP.daysDiff(new Date(s.date_entry||Date.now()).getTime()) > 365).length;
 
                     const alerts = [];
-                    if(overdueAgenda > 0) alerts.push(`<div onclick="APP.nav('agenda')" style="cursor:pointer; background:#fff1f2; border:1px solid #fecaca; border-left:4px solid #ef4444; border-radius:8px; padding:10px 14px; flex:1; min-width:160px;">
+                    if(overdueAgenda > 0) alerts.push(`<div onclick="APP.nav('agenda')" style="cursor:pointer; background:#1e1010; border:1px solid #5a2020; border-left:4px solid #8a3030; border-radius:8px; padding:10px 14px; flex:1; min-width:160px;">
                         <div style="font-size:10px; font-weight:800; color:#991b1b; text-transform:uppercase;">⚠️ Tarefas Vencidas</div>
                         <div style="font-size:22px; font-weight:900; color:#7f1d1d;">${overdueAgenda}</div>
                         <div style="font-size:10px; color:#b91c1c;">Clique para ver agenda</div>
@@ -2690,7 +3070,7 @@
                         const color = pct >= 100 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444';
                         const falta = Math.max(u.goal - cur.rev, 0);
                         goalEl.style.display = 'block';
-                        goalEl.innerHTML = `<div style="background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:16px 20px;">
+                        goalEl.innerHTML = `<div style="background:#1a1a1a; border:1px solid #2e2e2e; border-radius:10px; padding:16px 20px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                                 <div style="font-size:12px; font-weight:800; color:#111827;">🎯 Minha Meta — ${new Date().toLocaleString('pt-BR',{month:'long'})}</div>
                                 <div style="font-size:20px; font-weight:900; color:${color};">${pct.toFixed(1)}%</div>
@@ -3063,15 +3443,15 @@
                         const hasAlert = delayed.length > 0;
                         const bodyId = `agenda-body-${idx}`;
 
-                        html += `<div style="margin-bottom:10px; border-radius:8px; overflow:hidden; border:1px solid #e5e7eb;">
+                        html += `<div style="margin-bottom:10px; border-radius:8px; overflow:hidden; border:1px solid #2a2a2a;">
                             <div onclick="APP.toggleAgendaSeller('${bodyId}')"
-                                style="display:flex; align-items:center; gap:10px; padding:12px 16px; background:#1f2937; cursor:pointer; user-select:none;">
-                                <span style="font-size:13px; font-weight:800; color:#fbbf24; text-transform:uppercase;">👤 ${seller}</span>
+                                style="display:flex; align-items:center; gap:10px; padding:12px 16px; background:#181818; cursor:pointer; user-select:none; border-bottom:1px solid #2a2a2a;">
+                                <span style="font-size:13px; font-weight:800; color:#c8c8c8; text-transform:uppercase;">👤 ${seller}</span>
                                 ${hasAlert ? `<span style="background:#ef4444; color:#fff; font-size:9px; font-weight:800; padding:2px 7px; border-radius:10px;">${delayed.length} atrasada${delayed.length>1?'s':''}</span>` : ''}
                                 <span style="margin-left:auto; font-size:11px; color:#9ca3af;">${sellerDeals.length} tarefa${sellerDeals.length!==1?'s':''}</span>
                                 <span id="${bodyId}-arrow" style="color:#9ca3af; font-size:12px; transition:transform 0.2s;">▼</span>
                             </div>
-                            <div id="${bodyId}" style="display:none; padding:12px; background:#fff;">
+                            <div id="${bodyId}" style="display:none; padding:12px; background:#161616;">
                                 ${buildSection('⚠️ Atrasadas', delayed)}
                                 ${buildSection('📅 Hoje', todayList)}
                                 ${buildSection('🚀 Próximas', future)}
@@ -3145,7 +3525,7 @@
                     data: {
                         labels,
                         datasets: [
-                            { label: 'Tratores',    data: dataTratores,   borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.08)',  tension: 0.4, fill: true,  pointRadius: 4, pointHoverRadius: 6, borderWidth: 2 },
+                            { label: 'Tratores',    data: dataTratores,   borderColor: '#c8c8c8', backgroundColor: 'rgba(200,200,200,0.06)',  tension: 0.4, fill: true,  pointRadius: 4, pointHoverRadius: 6, borderWidth: 2 },
                             { label: 'Implementos', data: dataImplementos, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)',   tension: 0.4, fill: true,  pointRadius: 4, pointHoverRadius: 6, borderWidth: 2 },
                             { label: 'Consórcio',   data: dataConsorcio,  borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.08)',   tension: 0.4, fill: true,  pointRadius: 4, pointHoverRadius: 6, borderWidth: 2 }
                         ]
@@ -3175,7 +3555,7 @@
                     type: 'doughnut',
                     data: {
                         labels: Object.keys(mixTot),
-                        datasets: [{ data: Object.values(mixTot), backgroundColor: ['#fbbf24','#3b82f6','#10b981'], borderWidth: 2, borderColor: '#fff' }]
+                        datasets: [{ data: Object.values(mixTot), backgroundColor: ['#c8c8c8','#6a9fd8','#6abf8a'], borderWidth: 2, borderColor: '#1c1c1c' }]
                     },
                     options: {
                         responsive: true, maintainAspectRatio: false,
@@ -3202,7 +3582,7 @@
                     const currentSales = APP.data.deals.filter(d => d.owner === u.name && d.stage === 'ganho' && d.close_date && new Date(d.close_date).getMonth() === cm && new Date(d.close_date).getFullYear() === cy).reduce((a, b) => a + b.value, 0);
                     const pct = Math.min((currentSales / u.goal) * 100, 100); 
                     let color = '#ef4444'; if (pct > 50) color = '#eab308'; if (pct >= 100) color = '#10b981'; 
-                    return `<div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span style="font-weight:bold; font-size:12px;">${u.name}</span><span style="font-size:11px; color:#6b7280;">${pct.toFixed(0)}%</span></div><div style="background:#f3f4f6; height:8px; border-radius:4px; overflow:hidden;"><div style="width:${pct}%; background:${color}; height:100%;"></div></div><div style="font-size:10px; margin-top:5px; color:#6b7280;">${currentSales.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} / ${u.goal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div></div>`;
+                    return `<div style="border:1px solid #2e2e2e; border-radius:8px; padding:10px;background:#1a1a1a;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span style="font-weight:bold; font-size:12px;color:#e8e8e8;">${u.name}</span><span style="font-size:11px; color:#808080;"${pct.toFixed(0)}%</span></div><div style="background:#2a2a2a; height:8px; border-radius:4px; overflow:hidden;"><div style="width:${pct}%; background:${color}; height:100%;"></div></div><div style="font-size:10px; margin-top:5px; color:#909090;">${currentSales.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} / ${u.goal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div></div>`;
                 }).join('');
             },
 
@@ -3363,19 +3743,19 @@
                 <style>
                     * { box-sizing: border-box; margin: 0; padding: 0; }
                     body { font-family: 'Segoe UI', sans-serif; color: #1f2937; padding: 30px; font-size: 12px; }
-                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #fbbf24; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 3px solid #c8c8c8; }
                     .brand { font-size: 22px; font-weight: 900; color: #111827; font-style: italic; }
-                    .brand span { color: #fbbf24; }
+                    .brand span { color: #888; }
                     .meta { text-align: right; font-size: 11px; color: #6b7280; }
                     .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
-                    .kpi { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+                    .kpi { background: #f5f5f5; border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
                     .kpi label { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; color: #6b7280; margin-bottom: 4px; }
                     .kpi .val { font-size: 18px; font-weight: 900; color: #111827; }
                     table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-                    th { background: #1f2937; color: #fbbf24; padding: 8px 10px; font-size: 10px; text-transform: uppercase; text-align: left; font-weight: 800; }
+                    th { background: #222; color: #c8c8c8; padding: 8px 10px; font-size: 10px; text-transform: uppercase; text-align: left; font-weight: 800; }
                     td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
-                    tr:nth-child(even) td { background: #f9fafb; }
-                    .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+                    tr:nth-child(even) td { background: #f7f7f7; }
+                    .footer { margin-top: 24px; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #ddd; padding-top: 12px; }
                     @media print { body { padding: 15px; } }
                 </style></head><body>
                 <div class="header">
@@ -3469,8 +3849,8 @@
                     (c.cpf_cnpj||'').toLowerCase().includes(q)
                 ).slice(0, 4);
                 if(clients.length) {
-                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#9ca3af; text-transform:uppercase; background:#f9fafb;">📇 Clientes</div>`;
-                    html += clients.map(c => `<div onclick="APP.nav('clientes'); document.getElementById('search-client').value='${c.name}'; APP.renderClients();" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:12px;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#808080; text-transform:uppercase; background:#161616;">📇 Clientes</div>`;
+                    html += clients.map(c => `<div onclick="APP.nav('clientes'); document.getElementById('search-client').value='${c.name}'; APP.renderClients();" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #222; font-size:12px; color:#c8c8c8;" onmouseover="this.style.background='#222'" onmouseout="this.style.background='transparent'">
                         <div style="font-weight:700;">${c.name}</div>
                         <div style="font-size:10px; color:#9ca3af;">${c.phone||''} ${c.obs||''}</div>
                     </div>`).join('');
@@ -3484,8 +3864,8 @@
                 if(!isG) deals = deals.filter(d => d.owner === APP.user.name);
                 deals = deals.slice(0, 4);
                 if(deals.length) {
-                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#9ca3af; text-transform:uppercase; background:#f9fafb;">⚡ Negócios em Aberto</div>`;
-                    html += deals.map(d => `<div onclick="APP.nav('funil'); APP.editDeal('${d.id}');" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:12px;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#808080; text-transform:uppercase; background:#161616;">⚡ Negócios em Aberto</div>`;
+                    html += deals.map(d => `<div onclick="APP.nav('funil'); APP.editDeal('${d.id}');" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #222; font-size:12px; color:#c8c8c8;" onmouseover="this.style.background='#222'" onmouseout="this.style.background='transparent'">
                         <div style="font-weight:700;">${d.client} <span style="font-size:10px; color:#9ca3af;">— ${d.owner}</span></div>
                         <div style="font-size:10px; color:#9ca3af;">${fmt(d.value||0)} · ${d.stage}</div>
                     </div>`).join('');
@@ -3497,8 +3877,8 @@
                     ((s.model||'').toLowerCase().includes(q) || (s.mono||'').toLowerCase().includes(q))
                 ).slice(0, 4);
                 if(stock.length) {
-                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#9ca3af; text-transform:uppercase; background:#f9fafb;">🚜 Estoque</div>`;
-                    html += stock.map(s => `<div onclick="APP.nav('estoque'); document.getElementById('search-stock').value='${s.model}'; APP.renderStock();" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:12px;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+                    html += `<div style="padding:6px 12px; font-size:10px; font-weight:800; color:#808080; text-transform:uppercase; background:#161616;">🚜 Estoque</div>`;
+                    html += stock.map(s => `<div onclick="APP.nav('estoque'); document.getElementById('search-stock').value='${s.model}'; APP.renderStock();" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #222; font-size:12px; color:#c8c8c8;" onmouseover="this.style.background='#222'" onmouseout="this.style.background='transparent'">
                         <div style="font-weight:700;">${s.model}</div>
                         <div style="font-size:10px; color:#9ca3af;">${s.type} · ${s.mono||'-'} · ${fmt(s.cost)}</div>
                     </div>`).join('');
