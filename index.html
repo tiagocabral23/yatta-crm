@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TMC | Intelligence in Motion</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:wght@300;400;600&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -98,28 +98,37 @@
   }
 
   .logo-tmc {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(64px, 10vw, 88px);
-    letter-spacing: 0.18em;
+    font-family: 'Russo One', sans-serif;
+    font-size: clamp(72px, 12vw, 96px);
+    letter-spacing: 0.14em;
     line-height: 1;
     display: block;
+    position: relative;
+
+    /* Gradiente metálico base — escuro embaixo, claro no topo como luz vinda de cima */
     background: linear-gradient(
-      160deg,
-      #6a7b8a 0%,
-      #b0bec8 25%,
-      #dce6ec 45%,
-      #e8edf2 55%,
-      #b8c8d4 75%,
-      #7a8b98 100%
+      175deg,
+      #e8edf2 0%,
+      #d0d8e0 12%,
+      #ffffff 22%,
+      #c8d4dc 32%,
+      #a0b0bc 48%,
+      #7a8e9c 65%,
+      #566470 82%,
+      #3a4850 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    filter: drop-shadow(0 2px 18px rgba(150,180,210,0.18));
-    position: relative;
+
+    /* Glow / luz volumétrica acima das letras */
+    filter:
+      drop-shadow(0 -6px 18px rgba(210,230,245,0.55))
+      drop-shadow(0 -2px 6px rgba(255,255,255,0.35))
+      drop-shadow(0 4px 24px rgba(80,110,140,0.25));
   }
 
-  /* shimmer sweep */
+  /* Reflexo de luz cruzando as letras (shimmer) */
   .logo-tmc::after {
     content: 'TMC';
     position: absolute;
@@ -128,24 +137,26 @@
     font-size: inherit;
     letter-spacing: inherit;
     background: linear-gradient(
-      105deg,
-      transparent 30%,
-      rgba(255,255,255,0.55) 48%,
-      rgba(255,255,255,0.7) 52%,
-      transparent 70%
+      108deg,
+      transparent 20%,
+      rgba(255,255,255,0.0) 38%,
+      rgba(255,255,255,0.65) 48%,
+      rgba(255,255,255,0.85) 52%,
+      rgba(255,255,255,0.0) 62%,
+      transparent 80%
     );
+    background-size: 220% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-size: 200% 100%;
-    animation: shimmer 4s ease-in-out infinite 1.5s;
+    animation: shimmer 5s ease-in-out infinite 2s;
     pointer-events: none;
   }
 
   @keyframes shimmer {
-    0%   { background-position: -100% 0; }
-    40%  { background-position: 200% 0; }
-    100% { background-position: 200% 0; }
+    0%   { background-position: -120% 0; }
+    45%  { background-position: 220% 0; }
+    100% { background-position: 220% 0; }
   }
 
   .tagline {
@@ -290,12 +301,34 @@
     bottom: 28px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 9.5px;
-    letter-spacing: 0.3em;
-    color: rgba(120,135,148,0.4);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.38em;
     text-transform: uppercase;
     white-space: nowrap;
     z-index: 3;
+
+    background: linear-gradient(
+      90deg,
+      #6a7a88 0%,
+      #a8b8c4 20%,
+      #d8e4ec 40%,
+      #f0f4f7 50%,
+      #d8e4ec 60%,
+      #a8b8c4 80%,
+      #6a7a88 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: silver-flow 6s linear infinite;
+    filter: drop-shadow(0 0 8px rgba(180,210,230,0.2));
+  }
+
+  @keyframes silver-flow {
+    0%   { background-position: 0% center; }
+    100% { background-position: 200% center; }
   }
 
   /* ── ERROR MSG ── */
