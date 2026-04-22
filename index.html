@@ -97,6 +97,31 @@
     animation: rise 0.9s 0.1s cubic-bezier(0.22,1,0.36,1) both;
   }
 
+  /* ── TMC ALTO RELEVO METÁLICO ── */
+  .logo-tmc-wrap {
+    position: relative;
+    display: inline-block;
+    line-height: 1;
+  }
+
+  /* Camada de sombra/profundidade — cria a ilusão de relevo */
+  .logo-tmc-wrap::before {
+    content: 'TMC';
+    font-family: 'Russo One', sans-serif;
+    font-size: clamp(72px, 12vw, 96px);
+    letter-spacing: 0.14em;
+    position: absolute;
+    top: 3px; left: 2px;
+    background: linear-gradient(180deg, #1a2228 0%, #0a0e12 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(1.5px);
+    opacity: 0.9;
+  }
+
   .logo-tmc {
     font-family: 'Russo One', sans-serif;
     font-size: clamp(72px, 12vw, 96px);
@@ -104,31 +129,34 @@
     line-height: 1;
     display: block;
     position: relative;
+    z-index: 1;
 
-    /* Gradiente metálico base — escuro embaixo, claro no topo como luz vinda de cima */
+    /* Metal escovado: claro no meio, escuro nas bordas — alto relevo clássico */
     background: linear-gradient(
-      175deg,
-      #e8edf2 0%,
-      #d0d8e0 12%,
-      #ffffff 22%,
-      #c8d4dc 32%,
-      #a0b0bc 48%,
-      #7a8e9c 65%,
-      #566470 82%,
-      #3a4850 100%
+      180deg,
+      #4a5a68  0%,
+      #8a9dac  10%,
+      #c2d0da  22%,
+      #e8eef3  32%,
+      #f5f8fa  40%,
+      #ffffff  46%,
+      #e2eaf0  52%,
+      #b8c8d4  62%,
+      #7a8e9c  74%,
+      #4e6070  85%,
+      #344048  100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 
-    /* Glow / luz volumétrica acima das letras */
+    /* Relevo: borda clara no topo, escura embaixo */
     filter:
-      drop-shadow(0 -6px 18px rgba(210,230,245,0.55))
-      drop-shadow(0 -2px 6px rgba(255,255,255,0.35))
-      drop-shadow(0 4px 24px rgba(80,110,140,0.25));
+      drop-shadow(0 -1px 0px rgba(255,255,255,0.5))
+      drop-shadow(0  2px 2px rgba(0,0,0,0.7));
   }
 
-  /* Reflexo de luz cruzando as letras (shimmer) */
+  /* Luz que passa pelas letras — faixa fina e elegante */
   .logo-tmc::after {
     content: 'TMC';
     position: absolute;
@@ -136,27 +164,33 @@
     font-family: inherit;
     font-size: inherit;
     letter-spacing: inherit;
+    line-height: inherit;
+
     background: linear-gradient(
-      108deg,
-      transparent 20%,
-      rgba(255,255,255,0.0) 38%,
-      rgba(255,255,255,0.65) 48%,
-      rgba(255,255,255,0.85) 52%,
-      rgba(255,255,255,0.0) 62%,
-      transparent 80%
+      105deg,
+      transparent    0%,
+      transparent   30%,
+      rgba(255,255,255,0.0) 40%,
+      rgba(220,235,245,0.4) 46%,
+      rgba(255,255,255,0.75) 50%,
+      rgba(220,235,245,0.4) 54%,
+      rgba(255,255,255,0.0) 60%,
+      transparent   70%,
+      transparent  100%
     );
-    background-size: 220% 100%;
+    background-size: 300% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: shimmer 5s ease-in-out infinite 2s;
+    animation: light-pass 6s cubic-bezier(0.4, 0, 0.2, 1) infinite 1.5s;
     pointer-events: none;
+    z-index: 2;
   }
 
-  @keyframes shimmer {
-    0%   { background-position: -120% 0; }
-    45%  { background-position: 220% 0; }
-    100% { background-position: 220% 0; }
+  @keyframes light-pass {
+    0%   { background-position: -200% 0; }
+    35%  { background-position: 300% 0; }
+    100% { background-position: 300% 0; }
   }
 
   .tagline {
@@ -370,7 +404,9 @@
 <div class="stage">
   <div class="card">
     <div class="logo-block">
-      <span class="logo-tmc">TMC</span>
+      <div class="logo-tmc-wrap">
+        <span class="logo-tmc">TMC</span>
+      </div>
       <span class="tagline">Intelligence in Motion</span>
     </div>
 
